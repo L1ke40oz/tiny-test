@@ -15,25 +15,21 @@
   #stage { flex:1; position:relative; min-height:0; }
   canvas { display:block; width:100%; height:100%; touch-action:none; }
 
-  /* ---- 传感器授权遮罩 ---- */
   #gate { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;
     justify-content:center; gap:14px; background:rgba(20,20,26,.94); z-index:20; text-align:center; padding:24px; }
   #gate h1 { font-size:19px; font-weight:600; letter-spacing:.02em; }
   #gate p { font-size:13px; color:#9a9aa8; max-width:300px; }
-  #gate button { background:#e8c170; color:#1a1a20; border:0; border-radius:999px;
+  #gate button { background:#d9a441; color:#1a1a20; border:0; border-radius:999px;
     padding:13px 30px; font-size:15px; font-weight:600; font-family:inherit; cursor:pointer; }
   #gate .skip { background:none; color:#7a7a88; font-size:12px; font-weight:400; padding:4px; text-decoration:underline; }
 
-  /* ---- 顶部状态 ---- */
   #hud { position:absolute; top:0; left:0; right:0; padding:8px 10px; z-index:10;
     font:11px/1.45 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    color:#8a8a98; background:linear-gradient(#14141aee, #14141a00); pointer-events:none;
-    white-space:pre; }
-  #hud b { color:#e8c170; font-weight:600; }
+    color:#8a8a98; background:linear-gradient(#14141aee, #14141a00); pointer-events:none; white-space:pre; }
+  #hud b { color:#d9a441; font-weight:600; }
   #hud .bad { color:#e06060; }
   #hud .ok  { color:#60c080; }
 
-  /* ---- 底部工具栏 ---- */
   #bar { flex:0 0 auto; background:#1c1c24; border-top:1px solid #2a2a35; padding:9px 10px 10px; }
   #swatches { display:flex; gap:7px; justify-content:center; margin-bottom:9px; }
   .sw { width:34px; height:34px; border-radius:50%; border:2px solid transparent; cursor:pointer;
@@ -42,16 +38,15 @@
   #ctrls { display:flex; gap:7px; align-items:center; justify-content:center; flex-wrap:wrap; }
   #ctrls button { background:#2a2a35; color:#c8c8d4; border:0; border-radius:8px;
     padding:8px 13px; font-size:12px; font-family:inherit; cursor:pointer; }
-  #ctrls button[data-on] { background:#e8c170; color:#1a1a20; font-weight:600; }
+  #ctrls button[data-on] { background:#d9a441; color:#1a1a20; font-weight:600; }
 
-  /* ---- 手动重力盘（无传感器时） ---- */
   #dial { position:absolute; right:12px; bottom:12px; width:74px; height:74px; z-index:10;
     border-radius:50%; background:rgba(28,28,36,.86); border:1px solid #3a3a48; display:none; touch-action:none; }
   #dial.show { display:block; }
   #dial::after { content:''; position:absolute; left:50%; top:50%; width:5px; height:5px;
     margin:-2.5px; border-radius:50%; background:#4a4a58; }
   #knob { position:absolute; width:17px; height:17px; margin:-8.5px; border-radius:50%;
-    background:#e8c170; pointer-events:none; }
+    background:#d9a441; pointer-events:none; }
 </style>
 </head>
 <body>
@@ -83,145 +78,383 @@
 'use strict';
 
 /* ============================================================
-   1. 沙子模拟
+   沙子模型
+   ----------------------------------------------------------
+   分两种状态：
+     · 活动沙粒 —— 浮点位置和速度，按连续重力向量积分。数量不多，
+                   所以可以算得细，运动是丝滑的。
+     · 静止沙   —— 烘焙进位图，只参与碰撞不再模拟。数量可以极大。
+   落地时用「切向重力 vs 摩擦力」判断是继续滑还是停下，
+   休止角因此可调（MU = tan(休止角)），而不是被格子锁死在 45°。
    ============================================================ */
-const CELL = 4;                       // 每个沙粒在屏幕上的 CSS 像素大小
+
+const CELL   = 2;        // 每个沙粒的屏幕尺寸（CSS px）—— 越小颗粒越细
+const MAX_P  = 20000;    // 活动沙粒上限
+const ACCEL  = 0.22;     // 重力加速度（格/帧²）
+const VMAX   = 6.5;      // 速度上限
+const SUBSTEP = 0.9;     // 每个子步最多移动多少格（<1 才不会穿透）
+const MU     = 0.65;     // 摩擦系数 = tan(33°)，决定休止角
+const GRIP_KEEP  = 0.30; // 被静摩擦压住时的速度衰减
+const REST_V = 0.12;     // 低于这个速度且站得住 → 沉降为静止沙
+const STALL_D = 0.15;    // 一帧位移小于这个值算「没挪动」
+const STALL_N = 8;       // 连续没挪动这么多帧 → 强制沉降
+
+// 真实彩沙的色调：比纯色暗、偏灰，不是糖果色
 const PALETTE = [
-  null,                               // 0 = 空
-  '#e8c170', '#e2703a', '#d94f4f', '#b968d9',
-  '#4f8fd9', '#38c7b4', '#5fbf6a', '#f2f0e6',
+  null,
+  '#d9a441', '#c46b34', '#b04138', '#8a5596',
+  '#3f6a9e', '#2f8f86', '#5c9147', '#ddd4c0',
 ];
 
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d', { alpha:false });
-const off = document.createElement('canvas');          // 网格分辨率的离屏画布
+const off = document.createElement('canvas');
 const offCtx = off.getContext('2d', { alpha:false });
 
-let W = 0, H = 0;                     // 网格尺寸（格）
-let grid, shade, vel, stamp, img;     // 颜色 / 明暗 / 速度 / 同帧占用标记 / ImageData
+let W = 0, H = 0;
+let grid, seed, occ, img, img32;
 let color = 1, erasing = false;
-let frameId = 0;
 
-// 速度参数：沙粒在自由空间里持续加速，撞到东西就归零。
-const ACCEL = 0.28;                   // 每帧加速度（格/帧²）
-const VMAX  = 4.2;                    // 速度上限，防止穿透
-const SLIDE_V = 0.55;                 // 侧滑后保留的速度（摩擦）
+// 活动沙粒（SoA）
+const pX = new Float32Array(MAX_P), pY = new Float32Array(MAX_P);
+const pVX = new Float32Array(MAX_P), pVY = new Float32Array(MAX_P);
+const pC = new Uint8Array(MAX_P), pS = new Uint8Array(MAX_P);
+const pStuck = new Uint8Array(MAX_P);
+const pOrder = new Int32Array(MAX_P), pKey = new Int32Array(MAX_P);
+let pCnt = new Int32Array(8);
+let pn = 0;
+
+const N8X = [-1,0,1,-1,1,-1,0,1], N8Y = [-1,-1,-1,0,0,1,1,1];
+let gDX = 0, gDY = 1;                // 取整后的重力方向，settle/relax 判断「脚下」用
+
+/* ---------- 颗粒配色：每种沙子预生成 16 个变体 ---------- */
+function hexRgb(h){ return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; }
+function rgbHsl(r,g,b){
+  r/=255; g/=255; b/=255;
+  const mx=Math.max(r,g,b), mn=Math.min(r,g,b), l=(mx+mn)/2;
+  let h=0, s=0;
+  if (mx!==mn) { const d=mx-mn; s = l>0.5 ? d/(2-mx-mn) : d/(mx+mn);
+    h = mx===r ? (g-b)/d+(g<b?6:0) : mx===g ? (b-r)/d+2 : (r-g)/d+4; h/=6; }
+  return [h,s,l];
+}
+function hslRgb(h,s,l){
+  if (s===0) { const v=Math.round(l*255); return [v,v,v]; }
+  const f=(p,q,t)=>{ if(t<0)t+=1; if(t>1)t-=1;
+    if(t<1/6) return p+(q-p)*6*t; if(t<1/2) return q;
+    if(t<2/3) return p+(q-p)*(2/3-t)*6; return p; };
+  const q = l<0.5 ? l*(1+s) : l+s-l*s, p = 2*l-q;
+  return [Math.round(f(p,q,h+1/3)*255), Math.round(f(p,q,h)*255), Math.round(f(p,q,h-1/3)*255)];
+}
+// VARIANT[颜色][0..15] = 预打包的 RGBA，渲染时只需一次数组查表
+const VARIANT = PALETTE.map(hex => {
+  if (!hex) return null;
+  const [h,s,l] = rgbHsl(...hexRgb(hex));
+  const a = new Uint32Array(16);
+  for (let k = 0; k < 16; k++) {
+    const hh = (h + (Math.random()-0.5)*0.030 + 1) % 1;            // 色相微扰
+    const ss = Math.min(1, Math.max(0, s + (Math.random()-0.5)*0.26));
+    const ll = Math.min(0.93, Math.max(0.07, l + (Math.random()-0.5)*0.30));
+    const [r,g,b] = hslRgb(hh, ss, ll);
+    a[k] = ((255<<24) | (b<<16) | (g<<8) | r) >>> 0;
+  }
+  return a;
+});
+const BG = ((255<<24) | (0x1a<<16) | (0x14<<8) | 0x14) >>> 0;
 
 function resize() {
   const r = cv.getBoundingClientRect();
+  if (r.width < 1 || r.height < 1) return;          // 布局还没完成，等下一次
   const dpr = Math.min(devicePixelRatio || 1, 2);
   cv.width  = Math.round(r.width  * dpr);
   cv.height = Math.round(r.height * dpr);
 
   const nW = Math.max(8, Math.floor(r.width  / CELL));
   const nH = Math.max(8, Math.floor(r.height / CELL));
-  const old = grid, oW = W, oH = H;
+  if (nW === W && nH === H) return;
 
+  const old = grid, oldSeed = seed, oW = W, oH = H;
   W = nW; H = nH;
-  grid  = new Uint8Array(W * H);
-  shade = new Uint8Array(W * H);
-  vel   = new Float32Array(W * H);
-  stamp = new Int32Array(W * H);
+  grid = new Uint8Array(W * H);
+  seed = new Uint8Array(W * H);
+  occ  = new Int32Array(W * H);      // 活动沙粒占用表，值 = 粒子下标+1
+  pCnt = new Int32Array(2*(W+H) + 2);
   off.width = W; off.height = H;
   img = offCtx.createImageData(W, H);
+  img32 = new Uint32Array(img.data.buffer);
 
-  if (old) {                          // 旋转屏幕时尽量保留已有的沙子
+  if (old) {
     for (let y = 0; y < Math.min(oH, H); y++)
-      for (let x = 0; x < Math.min(oW, W); x++)
-        grid[y*W + x] = old[y*oW + x];
+      for (let x = 0; x < Math.min(oW, W); x++) {
+        grid[y*W+x] = old[y*oW+x]; seed[y*W+x] = oldSeed[y*oW+x];
+      }
   }
-  for (let i = 0; i < shade.length; i++) shade[i] = (Math.random() * 40) | 0;
   ctx.imageSmoothingEnabled = false;
 }
 
-/* 8 个方向，按角度索引 */
-const DIRS = [[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1],[0,-1],[1,-1]];
+/* ---------- 表面法线：从 5×5 邻域的占用梯度估计，指向空的一侧 ---------- */
+let nrmX = 0, nrmY = 0;
+function normalAt(cx, cy) {
+  let ax = 0, ay = 0;
+  for (let dy = -2; dy <= 2; dy++) {
+    for (let dx = -2; dx <= 2; dx++) {
+      if (!dx && !dy) continue;
+      const x = cx+dx, y = cy+dy;
+      const solid = (x<0 || x>=W || y<0 || y>=H) ? 1 : (grid[y*W+x] ? 1 : 0);
+      if (solid) { const d2 = dx*dx + dy*dy; ax -= dx/d2; ay -= dy/d2; }
+    }
+  }
+  const m = Math.hypot(ax, ay);
+  if (m < 1e-5) { nrmX = 0; nrmY = 0; return false; }
+  nrmX = ax/m; nrmY = ay/m;
+  return true;
+}
 
-function step(gx, gy) {
-  const mag = Math.hypot(gx, gy);
-  if (mag < 0.09) return;             // 设备平放：平面内几乎没有重力，沙子静止
+function killP(i) { pn--; pX[i]=pX[pn]; pY[i]=pY[pn]; pVX[i]=pVX[pn]; pVY[i]=pVY[pn];
+                    pC[i]=pC[pn]; pS[i]=pS[pn]; pStuck[i]=pStuck[pn];
+                    // 被搬到 i 号槽的那颗，占用表里的下标要跟着改
+                    const cx = pX[i]|0, cy = pY[i]|0;
+                    if (cx>=0 && cx<W && cy>=0 && cy<H) {
+                      const c = cy*W+cx; if (occ[c] === pn+1) occ[c] = i+1;
+                    } }
 
-  const idx = ((Math.round(Math.atan2(gy, gx) / (Math.PI / 4)) % 8) + 8) % 8;
-  const p  = DIRS[idx];
-  const a1 = DIRS[(idx + 1) % 8];
-  const a2 = DIRS[(idx + 7) % 8];
+/* 沉降：把活动沙粒写回位图。 */
+function settle(i) {
+  const cx = pX[i]|0, cy = pY[i]|0;
+  if (cx<0 || cx>=W || cy<0 || cy>=H) return false;
+  const c = cy*W + cx;
+  if (grid[c] !== 0) return false;
+  grid[c] = pC[i]; seed[c] = pS[i];
+  if (occ[c] === i+1) occ[c] = 0;
+  return true;
+}
 
-  // 关键：必须从「重力下游」往「上游」遍历，
-  // 这样移动过去的格子已经处理过，一帧内不会被重复推进。
-  const yDown  = gy >= 0;
-  const xRight = Math.abs(gx) < 0.15 ? Math.random() < 0.5 : gx > 0;
+/* ---------- 活动沙粒积分 ---------- */
 
-  const accel = ACCEL * mag;
-  frameId++;
+/* 按重力方向做计数排序，最下游的先算。
+   一柱停住的沙子因此能在同一帧里从下往上整根沉下去，
+   否则每帧只有贴着静止沙的那一粒能沉，几千颗要排几千帧。 */
+function buildOrder(gux, guy) {
+  const OFF = W + H, K = 2*OFF + 2;
+  pCnt.fill(0);
+  for (let i = 0; i < pn; i++) {
+    let k = (pX[i]*gux + pY[i]*guy + OFF) | 0;
+    if (k < 0) k = 0; else if (k >= K) k = K-1;
+    pKey[i] = k; pCnt[k]++;
+  }
+  let s = 0;
+  for (let k = K-1; k >= 0; k--) { const c = pCnt[k]; pCnt[k] = s; s += c; }
+  for (let i = 0; i < pn; i++) pOrder[pCnt[pKey[i]]++] = i;
+}
 
-  for (let yi = 0; yi < H; yi++) {
-    const y = yDown ? H - 1 - yi : yi;
-    const row = y * W;
-    for (let xi = 0; xi < W; xi++) {
-      const x = xRight ? W - 1 - xi : xi;
-      const i = row + x;
-      const c = grid[i];
-      if (c === 0) continue;
+function stepParticles(gx, gy, mag) {
+  const ax = gx * ACCEL, ay = gy * ACCEL;
+  const m = mag || 1;
+  const gux = gx/m, guy = gy/m;
 
-      // 1. 加速。速度决定这一帧最多能走几格。
-      let v = vel[i] + accel;
-      if (v > VMAX) v = VMAX;
+  // 重建占用表：沙粒之间必须互斥，否则一股沙流会把几千颗粒子塞进同一格
+  occ.fill(0);
+  for (let i = 0; i < pn; i++) {
+    const cx = pX[i]|0, cy = pY[i]|0;
+    if (cx>=0 && cx<W && cy>=0 && cy<H) occ[cy*W+cx] = i+1;
+  }
+  buildOrder(gux, guy);
 
-      const steps = Math.floor(v);
-      if (steps < 1) { vel[i] = v; continue; }   // 还没攒够一格，原地蓄力
+  for (let q = 0; q < pn; q++) {
+    const i = pOrder[q];
+    if (pC[i] === 0) continue;                 // 本帧已经沉降掉了
 
-      // 2. 沿重力方向连续推进
-      let cx = x, cy = y, ci = i, moved = 0, hardBlock = false, blockV = 0;
-      for (let s = 0; s < steps; s++) {
-        const nx = cx + p[0], ny = cy + p[1];
-        if (nx < 0 || nx >= W || ny < 0 || ny >= H) { hardBlock = true; blockV = 0; break; }
-        const j = ny * W + nx;
-        if (grid[j] !== 0)        { hardBlock = true; blockV = vel[j]; break; }  // 撞到沙子
-        if (stamp[j] === frameId) { break; }                    // 本帧刚被腾空 → 这一帧还轮不到它
-        grid[j] = c; shade[j] = shade[ci]; vel[j] = v;
-        grid[ci] = 0; vel[ci] = 0; stamp[ci] = frameId;         // 标记腾空
-        cx = nx; cy = ny; ci = j; moved++;
+    let vx = pVX[i] + ax, vy = pVY[i] + ay;
+    let sp = Math.hypot(vx, vy);
+    if (sp > VMAX) { const k = VMAX/sp; vx*=k; vy*=k; sp=VMAX; }
+
+    let x = pX[i], y = pY[i];
+    const x0 = x, y0 = y;
+    let ci = (y|0)*W + (x|0);
+    const n = Math.max(1, Math.ceil(sp / SUBSTEP));
+    const sx = vx/n, sy = vy/n;
+    let hitSolid = false, blocker = -1;
+
+    for (let s = 0; s < n; s++) {
+      const nx = x + sx, ny = y + sy;
+      if (nx<0 || nx>=W || ny<0 || ny>=H) { hitSolid = true; break; }
+      const j = (ny|0)*W + (nx|0);
+      if (j !== ci) {
+        if (grid[j] !== 0) { hitSolid = true; break; }
+        const o = occ[j];
+        if (o !== 0 && o !== i+1) { blocker = o-1; break; }   // 前面是另一颗活动沙粒
+        if (occ[ci] === i+1) occ[ci] = 0;
+        occ[j] = i+1; ci = j;
       }
+      x = nx; y = ny;
+    }
 
-      // 3. 真撞上了 → 尝试侧滑一格（堆积角的来源），速度打折
-      if (hardBlock) {
-        const swap = Math.random() < 0.5;
-        const alt = swap ? [a1, a2] : [a2, a1];
-        let slid = false;
-        for (let t = 0; t < 2; t++) {
-          const nx = cx + alt[t][0], ny = cy + alt[t][1];
-          if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
-          const j = ny * W + nx;
-          if (grid[j] !== 0 || stamp[j] === frameId) continue;
-          grid[j] = c; shade[j] = shade[ci]; vel[j] = v * SLIDE_V;
-          grid[ci] = 0; vel[ci] = 0; stamp[ci] = frameId;
-          slid = true;
-          break;
+    // 被另一颗活动沙粒挡住：相对速度归零，跟着它一起走。
+    // 不做法线碰撞 —— 否则一整股自由下落的沙流会互相刹车，又变回「一坨」。
+    if (blocker >= 0) {
+      const dx = x-x0, dy = y-y0;
+      if (dx*dx + dy*dy < STALL_D*STALL_D) { if (pStuck[i] < 255) pStuck[i]++; }
+      else pStuck[i] = 0;
+      pX[i]=x; pY[i]=y;
+      // 卡在别的沙粒后面太久 → 直接落到位图，交给 relax 顺坡摊平。
+      // 斜向重力下沙流会排成一列互相顶住，不这么放它们永远悬在半空。
+      if (pStuck[i] > STALL_N) {
+        const cx = x|0, cy = y|0;
+        if (cx>=0 && cx<W && cy>=0 && cy<H && grid[cy*W+cx] === 0) {
+          if (settle(i)) { pC[i] = 0; continue; }
         }
-        // 4. 侧滑也走不了 → 跟随前方那粒的速度。
-        //    前方若在下落，整柱一起走（动量传递）；前方若已静止，这粒才真正停下。
-        if (!slid) vel[ci] = blockV * 0.9;
-      } else {
-        vel[ci] = v;   // 被同帧标记挡住只是「排队」，速度保留
       }
+      pVX[i] = pVX[blocker]*0.92 + (Math.random()-0.5)*0.05;
+      pVY[i] = pVY[blocker]*0.92 + (Math.random()-0.5)*0.05;
+      continue;
+    }
+
+    if (!hitSolid) {                  // 自由飞行
+      pX[i]=x; pY[i]=y; pVX[i]=vx; pVY[i]=vy; pStuck[i]=0; continue;
+    }
+
+    // --- 撞上静止沙：吃掉法向速度，撑得住又慢下来了就沉降 ---
+    const cx = x|0, cy = y|0;
+    if (normalAt(cx, cy)) {
+      const vdn = vx*nrmX + vy*nrmY;
+      if (vdn < 0) { vx -= vdn*nrmX; vy -= vdn*nrmY; }   // 沙子不反弹
+    }
+    vx *= GRIP_KEEP; vy *= GRIP_KEEP;
+
+    const dx = x-x0, dy = y-y0;
+    if (dx*dx + dy*dy < STALL_D*STALL_D) { if (pStuck[i] < 255) pStuck[i]++; }
+    else pStuck[i] = 0;
+
+    // 休止角不在这里管 —— 交给 relax 在位图上一格一格地摊平。
+    // 沉降条件放宽：只要撞上东西又慢下来就落地，悬空的由 relax 每帧兜底掉下去。
+    // 之前卡着「脚下必须有沙」，斜坡面上的沙粒脚下永远是空的，于是整坡卡成活粒子。
+    if (vx*vx + vy*vy < REST_V*REST_V || pStuck[i] > STALL_N || mag < 0.09) {
+      if (settle(i)) { pC[i] = 0; continue; }   // 标记死亡，帧末统一压实
+      vx = 0; vy = 0;
+    }
+
+    pX[i]=x; pY[i]=y; pVX[i]=vx; pVY[i]=vy;
+  }
+
+  // 帧末压实：把沉降掉的槽位收回来。
+  // 不能在循环里做 swap-remove —— 那会打乱 pOrder 的下标。
+  let w = 0;
+  for (let i = 0; i < pn; i++) {
+    if (pC[i] === 0) continue;
+    if (w !== i) { pX[w]=pX[i]; pY[w]=pY[i]; pVX[w]=pVX[i]; pVY[w]=pVY[i];
+                   pC[w]=pC[i]; pS[w]=pS[i]; pStuck[w]=pStuck[i]; }
+    w++;
+  }
+  pn = w;
+}
+
+/* ---------- 静止沙的失稳检查：坡度超过休止角就重新唤醒 ---------- */
+
+/* 沿切向走 SPAN 格，再沿重力轴找到那边的沙面，返回「比脚下这里低几格」。
+   比 5×5 梯度稳得多：梯度在凹处会退化，切向/法向比值能飙到无穷。
+   静止沙和活动沙粒都算「有沙」—— 倒沙的时候堆体几乎全是活动粒子，
+   只看静止沙的话四面八方都像悬崖，谁都不肯停下来。 */
+const SPAN = 4, MARCH = 10;
+function solidAt(x, y) {
+  const j = y*W + x;
+  return grid[j] !== 0;
+}
+function surfaceDrop(x, y, tdx, tdy, gux, guy) {
+  const px = x + tdx*SPAN, py = y + tdy*SPAN;
+  const cx = Math.round(px), cy = Math.round(py);
+  if (cx<0 || cx>=W || cy<0 || cy>=H) return -99;        // 出界当成挡墙
+  if (solidAt(cx, cy)) {                                 // 那边更高：往上数到空为止
+    for (let k = 1; k <= MARCH; k++) {
+      const nx = Math.round(px - gux*k), ny = Math.round(py - guy*k);
+      if (nx<0 || nx>=W || ny<0 || ny>=H) return -99;
+      if (!solidAt(nx, ny)) return -k;
+    }
+    return -MARCH;
+  }
+  for (let k = 1; k <= MARCH; k++) {                     // 那边更低：往下数到实心为止
+    const nx = Math.round(px + gux*k), ny = Math.round(py + guy*k);
+    if (nx<0 || nx>=W || ny<0 || ny>=H) return -99;      // 悬崖外面，别往那塌
+    if (solidAt(nx, ny)) return k;
+  }
+  return MARCH;
+}
+
+let relaxPhase = 0;
+function relax(gx, gy) {
+  const m = Math.hypot(gx, gy) || 1;
+  const gux = gx/m, guy = gy/m;
+  const t1x = -guy, t1y = gux;
+  const thresh = MU * SPAN;
+
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = y*W + x;
+      if (grid[i] === 0) continue;
+
+      // 1. suspended: fall all the way along gravity
+      const bx = x+gDX, by = y+gDY;
+      if (bx>=0 && bx<W && by>=0 && by<H && grid[by*W+bx] === 0 && occ[by*W+bx] === 0) {
+        let fx = x, fy = y;
+        while (true) {
+          const nx = fx+gDX, ny = fy+gDY;
+          if (nx<0||nx>=W||ny<0||ny>=H) break;
+          if (grid[ny*W+nx] !== 0 || occ[ny*W+nx] !== 0) break;
+          fx = nx; fy = ny;
+        }
+        const j = fy*W+fx;
+        grid[j] = grid[i]; seed[j] = seed[i];
+        grid[i] = 0; seed[i] = 0;
+        continue;
+      }
+
+      // 2. skip interior grains
+      let surf = false;
+      for (let k = 0; k < 8; k++) {
+        const nx=x+N8X[k], ny=y+N8Y[k];
+        if (nx<0||nx>=W||ny<0||ny>=H) continue;
+        if (grid[ny*W+nx] === 0) { surf = true; break; }
+      }
+      if (!surf) continue;
+
+      // 3. avalanche: one cell tangent, then fall to bottom
+      const dA = surfaceDrop(x, y,  t1x,  t1y, gux, guy);
+      const dB = surfaceDrop(x, y, -t1x, -t1y, gux, guy);
+      if (dA <= thresh && dB <= thresh) continue;
+      const sx = dA >= dB ? t1x : -t1x;
+      const sy = dA >= dB ? t1y : -t1y;
+      let mx = Math.round(x + sx), my = Math.round(y + sy);
+      if (mx<0||mx>=W||my<0||my>=H) continue;
+      if (grid[my*W+mx] !== 0 || occ[my*W+mx] !== 0) continue;
+      while (true) {
+        const nx = mx+gDX, ny = my+gDY;
+        if (nx<0||nx>=W||ny<0||ny>=H) break;
+        if (grid[ny*W+nx] !== 0 || occ[ny*W+nx] !== 0) break;
+        mx = nx; my = ny;
+      }
+      const j = my*W+mx;
+      grid[j] = grid[i]; seed[j] = seed[i];
+      grid[i] = 0; seed[i] = 0;
     }
   }
 }
 
-/* 预解析调色板为 RGB，避免每帧字符串处理 */
-const RGB = PALETTE.map(h => h ? [
-  parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)
-] : [22,22,28]);
+function step(gx, gy) {
+  const mag = Math.hypot(gx, gy);
+  const m = mag || 1;
+  gDX = Math.round(gx/m); gDY = Math.round(gy/m);
+  if (mag < 0.09) { stepParticles(gx, gy, mag); return; }   // 平放：只让空中的沙落完
+  stepParticles(gx, gy, mag);
+  relax(gx, gy);
+}
 
 function draw() {
-  const d = img.data;
-  for (let i = 0, k = 0; i < grid.length; i++, k += 4) {
-    const c = RGB[grid[i]];
-    const s = grid[i] ? shade[i] - 20 : 0;      // 每粒轻微明暗差 → 有颗粒感
-    d[k]   = c[0] + s;
-    d[k+1] = c[1] + s;
-    d[k+2] = c[2] + s;
-    d[k+3] = 255;
+  img32.fill(BG);
+  for (let i = 0; i < grid.length; i++) {
+    const c = grid[i];
+    if (c) img32[i] = VARIANT[c][seed[i] & 15];
+  }
+  for (let i = 0; i < pn; i++) {
+    const x = pX[i]|0, y = pY[i]|0;
+    if (x>=0 && x<W && y>=0 && y<H) img32[y*W+x] = VARIANT[pC[i]][pS[i] & 15];
   }
   offCtx.putImageData(img, 0, 0);
   ctx.imageSmoothingEnabled = false;
@@ -229,29 +462,44 @@ function draw() {
 }
 
 /* ============================================================
-   2. 倒沙子（触摸 / 鼠标）
+   倒沙 / 擦除
    ============================================================ */
-let pouring = false, px = 0, py = 0;
+let pouring = false, tx = 0, ty = 0;
 
 function toCell(e) {
   const r = cv.getBoundingClientRect();
-  px = Math.floor((e.clientX - r.left) / r.width  * W);
-  py = Math.floor((e.clientY - r.top)  / r.height * H);
+  tx = (e.clientX - r.left) / r.width  * W;
+  ty = (e.clientY - r.top)  / r.height * H;
 }
 function pour() {
   if (!pouring) return;
-  const R = erasing ? 4 : 3;
-  for (let dy = -R; dy <= R; dy++) {
-    for (let dx = -R; dx <= R; dx++) {
-      if (dx*dx + dy*dy > R*R) continue;
-      const x = px + dx, y = py + dy;
-      if (x < 0 || x >= W || y < 0 || y >= H) continue;
-      const i = y * W + x;
-      if (erasing) { grid[i] = 0; vel[i] = 0; }
-      else if (grid[i] === 0 && Math.random() < 0.55) {
-        grid[i] = color; shade[i] = (Math.random() * 40) | 0; vel[i] = 0;
-      }
+  if (erasing) {
+    const R = 9;
+    for (let dy=-R; dy<=R; dy++) for (let dx=-R; dx<=R; dx++) {
+      if (dx*dx+dy*dy > R*R) continue;
+      const x=(tx+dx)|0, y=(ty+dy)|0;
+      if (x<0||x>=W||y<0||y>=H) continue;
+      grid[y*W+x] = 0;
     }
+    for (let i=0; i<pn; ) {
+      const dx=pX[i]-tx, dy=pY[i]-ty;
+      if (dx*dx+dy*dy < R*R) killP(i); else i++;
+    }
+    return;
+  }
+  const R = 4.5;
+  for (let k = 0; k < 16; k++) {
+    if (pn >= MAX_P) break;
+    const a = Math.random()*Math.PI*2, r = Math.sqrt(Math.random())*R;
+    const x = tx + Math.cos(a)*r, y = ty + Math.sin(a)*r;
+    if (x<0||x>=W||y<0||y>=H) continue;
+    const c = (y|0)*W + (x|0);
+    if (grid[c] !== 0 || occ[c] !== 0) continue;      // 别往已经有沙的地方塞
+    pX[pn]=x; pY[pn]=y;
+    pVX[pn] = gx*0.6 + (Math.random()-0.5)*0.5;
+    pVY[pn] = gy*0.6 + (Math.random()-0.5)*0.5;
+    pC[pn]=color; pS[pn]=(Math.random()*256)|0; pStuck[pn]=0;
+    occ[c] = pn+1; pn++;
   }
 }
 cv.addEventListener('pointerdown', e => { pouring = true; toCell(e); cv.setPointerCapture(e.pointerId); });
@@ -260,157 +508,127 @@ addEventListener('pointerup',     () => pouring = false);
 addEventListener('pointercancel', () => pouring = false);
 
 /* ============================================================
-   3. 重力来源：陀螺仪 或 手动盘
+   重力来源
    ============================================================ */
-let gx = 0, gy = 1;                   // 画布空间的重力方向（y 向下为正）
-let sensor = 'idle';                  // idle | granted | denied | unsupported | manual
-let raw = null, flipX = false, flipY = false, events = 0;
+let gx = 0, gy = 1;
+let sensor = 'idle', raw = null, flipX = false, flipY = false, events = 0;
 
 function onMotion(e) {
   const a = e.accelerationIncludingGravity;
   if (!a || (a.x === null && a.y === null)) return;
-  events++;
-  raw = a;
+  events++; raw = a;
 
-  // 规范：设备静止时 accelerationIncludingGravity 是「重力的反向」。
-  //   竖直手持 → y ≈ +9.8   |   平放屏幕朝上 → z ≈ +9.8
-  // 画布 y 轴向下，所以：重力方向 = (-a.x, +a.y)
+  // 规范：静止时 accelerationIncludingGravity 是重力的反向。
+  // 画布 y 轴向下，所以重力方向 = (-a.x, +a.y)
   let nx = -(a.x || 0), ny = (a.y || 0);
-
-  // 平板横竖屏切换后，传感器坐标系不跟着转，得自己补偿
   const ang = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
-  if (ang === 90)       { const t = nx; nx = ny;  ny = -t; }
-  else if (ang === -90 || ang === 270) { const t = nx; nx = -ny; ny = t; }
-  else if (ang === 180) { nx = -nx; ny = -ny; }
-
+  if (ang === 90)                      { const t = nx; nx = ny;  ny = -t; }
+  else if (ang === -90 || ang === 270) { const t = nx; nx = -ny; ny = t;  }
+  else if (ang === 180)                { nx = -nx; ny = -ny; }
   if (flipX) nx = -nx;
   if (flipY) ny = -ny;
 
   const m = Math.hypot(nx, ny) || 1;
-  gx = nx / m * Math.min(m / 9.8, 1);
-  gy = ny / m * Math.min(m / 9.8, 1);
+  const scale = Math.min(m / 9.8, 1);
+  gx = nx/m * scale; gy = ny/m * scale;
 }
 
 async function enableSensor() {
-  if (typeof DeviceMotionEvent === 'undefined') { sensor = 'unsupported'; useDial(); return; }
+  if (typeof DeviceMotionEvent === 'undefined') { sensor='unsupported'; useDial(); return; }
   try {
-    // iOS 13+ 必须在用户手势里调用，且页面必须是 HTTPS
     if (typeof DeviceMotionEvent.requestPermission === 'function') {
       const res = await DeviceMotionEvent.requestPermission();
-      if (res !== 'granted') { sensor = 'denied'; useDial(); return; }
+      if (res !== 'granted') { sensor='denied'; useDial(); return; }
     }
     addEventListener('devicemotion', onMotion);
     sensor = 'granted';
-    // 2 秒内一个事件都没有 → 设备其实没有传感器，自动退回手动盘
-    setTimeout(() => { if (events === 0) { sensor = 'unsupported'; useDial(); } }, 2000);
-  } catch (err) {
-    sensor = 'denied'; useDial();
-  }
+    setTimeout(() => { if (events === 0) { sensor='unsupported'; useDial(); } }, 2000);
+  } catch (err) { sensor='denied'; useDial(); }
 }
 
-/* --- 手动重力盘 --- */
 const dial = document.getElementById('dial'), knob = document.getElementById('knob');
 function useDial() { dial.classList.add('show'); setKnob(0, 1); }
 function setKnob(x, y) {
   gx = x; gy = y;
-  knob.style.left = (37 + x * 26) + 'px';
-  knob.style.top  = (37 + y * 26) + 'px';
+  knob.style.left = (37 + x*26) + 'px';
+  knob.style.top  = (37 + y*26) + 'px';
 }
 let dialing = false;
 function dialMove(e) {
   const r = dial.getBoundingClientRect();
-  let x = (e.clientX - r.left - r.width/2) / (r.width/2);
-  let y = (e.clientY - r.top - r.height/2) / (r.height/2);
-  const m = Math.hypot(x, y);
-  if (m > 1) { x /= m; y /= m; }
+  let x = (e.clientX - r.left - r.width/2)/(r.width/2);
+  let y = (e.clientY - r.top - r.height/2)/(r.height/2);
+  const m = Math.hypot(x,y); if (m > 1) { x/=m; y/=m; }
   setKnob(x, y);
 }
-dial.addEventListener('pointerdown', e => {
-  dialing = true; dial.setPointerCapture(e.pointerId); dialMove(e); e.stopPropagation();
-});
+dial.addEventListener('pointerdown', e => { dialing=true; dial.setPointerCapture(e.pointerId); dialMove(e); e.stopPropagation(); });
 dial.addEventListener('pointermove', e => { if (dialing) { dialMove(e); e.stopPropagation(); } });
 addEventListener('pointerup', () => dialing = false);
 
 /* ============================================================
-   4. UI
+   UI
    ============================================================ */
 const swatches = document.getElementById('swatches');
 PALETTE.forEach((hex, i) => {
   if (!hex) return;
   const b = document.createElement('div');
-  b.className = 'sw';
-  b.style.background = hex;
+  b.className = 'sw'; b.style.background = hex;
   if (i === 1) b.dataset.on = '';
   b.onclick = () => {
     color = i; erasing = false;
     document.querySelectorAll('.sw').forEach(s => delete s.dataset.on);
-    b.dataset.on = '';
-    delete eraseBtn.dataset.on;
+    b.dataset.on = ''; delete eraseBtn.dataset.on;
   };
   swatches.appendChild(b);
 });
-
 const eraseBtn = document.getElementById('erase');
-eraseBtn.onclick = () => {
-  erasing = !erasing;
-  if (erasing) eraseBtn.dataset.on = ''; else delete eraseBtn.dataset.on;
-};
-document.getElementById('clear').onclick = () => { grid.fill(0); vel.fill(0); };
-document.getElementById('flip').onclick  = e => {
-  flipX = !flipX; if (flipX) e.target.dataset.on = ''; else delete e.target.dataset.on;
-};
-document.getElementById('flipy').onclick = e => {
-  flipY = !flipY; if (flipY) e.target.dataset.on = ''; else delete e.target.dataset.on;
-};
+eraseBtn.onclick = () => { erasing = !erasing; if (erasing) eraseBtn.dataset.on=''; else delete eraseBtn.dataset.on; };
+document.getElementById('clear').onclick = () => { grid.fill(0); occ.fill(0); pn = 0; };
+document.getElementById('flip').onclick  = e => { flipX=!flipX; if(flipX) e.target.dataset.on=''; else delete e.target.dataset.on; };
+document.getElementById('flipy').onclick = e => { flipY=!flipY; if(flipY) e.target.dataset.on=''; else delete e.target.dataset.on; };
 
 const gate = document.getElementById('gate');
-document.getElementById('go').onclick   = async () => { await enableSensor(); gate.style.display = 'none'; };
-document.getElementById('skip').onclick = () => { sensor = 'manual'; useDial(); gate.style.display = 'none'; };
+document.getElementById('go').onclick   = async () => { await enableSensor(); gate.style.display='none'; };
+document.getElementById('skip').onclick = () => { sensor='manual'; useDial(); gate.style.display='none'; };
 
 /* ============================================================
-   5. 主循环
+   主循环
    ============================================================ */
 const hud = document.getElementById('hud');
-let frames = 0, fps = 0, last = performance.now(), acc = 0;
+let frames = 0, fps = 0, last = performance.now(), acc = 0, simMs = 0, tick = 0;
 
 function loop(now) {
+  // 布局可能还没完成（ResizeObserver 首次回调是 0×0）。没有网格就什么都别做，
+  // 但一定要继续排下一帧 —— 否则一次异常就把整个循环打死。
+  if (!grid) { resize(); requestAnimationFrame(loop); return; }
+
   const dt = now - last; last = now;
   frames++; acc += dt;
-  if (acc >= 500) { fps = Math.round(frames * 1000 / acc); frames = 0; acc = 0; }
+  if (acc >= 500) { fps = Math.round(frames*1000/acc); frames = 0; acc = 0; }
 
+  const t0 = performance.now();
+  pour();
   step(gx, gy);
+  simMs = simMs*0.9 + (performance.now()-t0)*0.1;
   draw();
 
-  if (frames % 2 === 0) {
+  if ((tick++ & 7) === 0) {
     const state = { granted:'<span class=ok>已授权</span>', denied:'<span class=bad>被拒绝</span>',
       unsupported:'<span class=bad>无传感器</span>', manual:'手动模式', idle:'未开启' }[sensor];
-    const sec = isSecureContext ? '<span class=ok>secure</span>' : '<span class=bad>非安全上下文·iOS会拒绝</span>';
+    const sec = isSecureContext ? '<span class=ok>secure</span>' : '<span class=bad>非安全上下文</span>';
     let n = 0; for (let i = 0; i < grid.length; i++) if (grid[i]) n++;
     hud.innerHTML =
       `传感器 ${state}   事件 ${events}   ${sec}\n` +
-      (raw ? `原始  x ${raw.x.toFixed(2).padStart(6)}  y ${raw.y.toFixed(2).padStart(6)}  z ${raw.z.toFixed(2).padStart(6)}\n` : '原始  —\n') +
-      `重力  <b>${gx.toFixed(2).padStart(5)}, ${gy.toFixed(2).padStart(5)}</b>   ${W}×${H}   ${n} 粒   ${fps} fps`;
+      (raw ? `原始  x ${(+raw.x).toFixed(2).padStart(6)}  y ${(+raw.y).toFixed(2).padStart(6)}  z ${(+raw.z).toFixed(2).padStart(6)}\n` : '原始  —\n') +
+      `重力  <b>${gx.toFixed(2).padStart(5)}, ${gy.toFixed(2).padStart(5)}</b>   ${W}×${H}\n` +
+      `静止 ${n}   活动 ${pn}   模拟 ${simMs.toFixed(1)}ms   ${fps} fps`;
   }
   requestAnimationFrame(loop);
 }
 
-/* 每帧持续倒沙（放在 rAF 之外，按固定节奏更顺手） */
-setInterval(pour, 16);
-
 new ResizeObserver(resize).observe(document.getElementById('stage'));
 resize();
-
-// 开局撒一点沙，方便一眼看出是否在流动
-for (let i = 0; i < 1800; i++) {
-  const x = (W/2 + (Math.random()-0.5) * W * 0.5) | 0;
-  const y = (H * 0.22 + (Math.random()-0.5) * H * 0.18) | 0;
-  if (x >= 0 && x < W && y >= 0 && y < H) {
-    const j = y*W + x;
-    grid[j] = 1 + ((Math.random() * 8) | 0);
-    shade[j] = (Math.random() * 40) | 0;
-  }
-}
-
+addEventListener('load', resize);
 requestAnimationFrame(loop);
 </script>
 </body>
