@@ -98,8 +98,14 @@ const off = document.createElement('canvas');          // 网格分辨率的离�
 const offCtx = off.getContext('2d', { alpha:false });
 
 let W = 0, H = 0;                     // 网格尺寸（格）
-let grid, shade, img;                 // 颜色索引 / 明暗抖动 / ImageData
+let grid, shade, vel, stamp, img;     // 颜色 / 明暗 / 速度 / 同帧占用标记 / ImageData
 let color = 1, erasing = false;
+let frameId = 0;
+
+// 速度参数：沙粒在自由空间里持续加速，撞到东西就归零。
+const ACCEL = 0.28;                   // 每帧加速度（格/帧²）
+const VMAX  = 4.2;                    // 速度上限，防止穿透
+const SLIDE_V = 0.55;                 // 侧滑后保留的速度（摩擦）
 
 function resize() {
   const r = cv.getBoundingClientRect();
@@ -114,6 +120,8 @@ function resize() {
   W = nW; H = nH;
   grid  = new Uint8Array(W * H);
   shade = new Uint8Array(W * H);
+  vel   = new Float32Array(W * H);
+  stamp = new Int32Array(W * H);
   off.width = W; off.height = H;
   img = offCtx.createImageData(W, H);
 
@@ -143,6 +151,9 @@ function step(gx, gy) {
   const yDown  = gy >= 0;
   const xRight = Math.abs(gx) < 0.15 ? Math.random() < 0.5 : gx > 0;
 
+  const accel = ACCEL * mag;
+  frameId++;
+
   for (let yi = 0; yi < H; yi++) {
     const y = yDown ? H - 1 - yi : yi;
     const row = y * W;
@@ -152,16 +163,46 @@ function step(gx, gy) {
       const c = grid[i];
       if (c === 0) continue;
 
-      const swap = Math.random() < 0.5;
-      const tries = [p, swap ? a1 : a2, swap ? a2 : a1];
-      for (let t = 0; t < 3; t++) {
-        const nx = x + tries[t][0], ny = y + tries[t][1];
-        if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+      // 1. 加速。速度决定这一帧最多能走几格。
+      let v = vel[i] + accel;
+      if (v > VMAX) v = VMAX;
+
+      const steps = Math.floor(v);
+      if (steps < 1) { vel[i] = v; continue; }   // 还没攒够一格，原地蓄力
+
+      // 2. 沿重力方向连续推进
+      let cx = x, cy = y, ci = i, moved = 0, hardBlock = false, blockV = 0;
+      for (let s = 0; s < steps; s++) {
+        const nx = cx + p[0], ny = cy + p[1];
+        if (nx < 0 || nx >= W || ny < 0 || ny >= H) { hardBlock = true; blockV = 0; break; }
         const j = ny * W + nx;
-        if (grid[j] !== 0) continue;
-        grid[j] = c;  shade[j] = shade[i];
-        grid[i] = 0;
-        break;
+        if (grid[j] !== 0)        { hardBlock = true; blockV = vel[j]; break; }  // 撞到沙子
+        if (stamp[j] === frameId) { break; }                    // 本帧刚被腾空 → 这一帧还轮不到它
+        grid[j] = c; shade[j] = shade[ci]; vel[j] = v;
+        grid[ci] = 0; vel[ci] = 0; stamp[ci] = frameId;         // 标记腾空
+        cx = nx; cy = ny; ci = j; moved++;
+      }
+
+      // 3. 真撞上了 → 尝试侧滑一格（堆积角的来源），速度打折
+      if (hardBlock) {
+        const swap = Math.random() < 0.5;
+        const alt = swap ? [a1, a2] : [a2, a1];
+        let slid = false;
+        for (let t = 0; t < 2; t++) {
+          const nx = cx + alt[t][0], ny = cy + alt[t][1];
+          if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+          const j = ny * W + nx;
+          if (grid[j] !== 0 || stamp[j] === frameId) continue;
+          grid[j] = c; shade[j] = shade[ci]; vel[j] = v * SLIDE_V;
+          grid[ci] = 0; vel[ci] = 0; stamp[ci] = frameId;
+          slid = true;
+          break;
+        }
+        // 4. 侧滑也走不了 → 跟随前方那粒的速度。
+        //    前方若在下落，整柱一起走（动量传递）；前方若已静止，这粒才真正停下。
+        if (!slid) vel[ci] = blockV * 0.9;
+      } else {
+        vel[ci] = v;   // 被同帧标记挡住只是「排队」，速度保留
       }
     }
   }
@@ -206,9 +247,9 @@ function pour() {
       const x = px + dx, y = py + dy;
       if (x < 0 || x >= W || y < 0 || y >= H) continue;
       const i = y * W + x;
-      if (erasing) { grid[i] = 0; }
+      if (erasing) { grid[i] = 0; vel[i] = 0; }
       else if (grid[i] === 0 && Math.random() < 0.55) {
-        grid[i] = color; shade[i] = (Math.random() * 40) | 0;
+        grid[i] = color; shade[i] = (Math.random() * 40) | 0; vel[i] = 0;
       }
     }
   }
@@ -314,7 +355,7 @@ eraseBtn.onclick = () => {
   erasing = !erasing;
   if (erasing) eraseBtn.dataset.on = ''; else delete eraseBtn.dataset.on;
 };
-document.getElementById('clear').onclick = () => grid.fill(0);
+document.getElementById('clear').onclick = () => { grid.fill(0); vel.fill(0); };
 document.getElementById('flip').onclick  = e => {
   flipX = !flipX; if (flipX) e.target.dataset.on = ''; else delete e.target.dataset.on;
 };
