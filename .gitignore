@@ -18,6 +18,8 @@ logs/
 # 后续开发产物
 node_modules/
 dist/
+build/
+.secrets/
 coverage/
 playwright-report/
 test-results/

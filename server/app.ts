@@ -3,20 +3,40 @@ import fastifyStatic from "@fastify/static";
 import { Server, type Socket } from "socket.io";
 import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
+import { registerAuth } from "./auth.js";
+import { readConfig, type AppConfig } from "./config.js";
 import { GameError, Room } from "./game.js";
 import type { Reply, Role } from "../shared/types.js";
 
-export async function createApp() {
+export async function createApp(config: AppConfig = readConfig()) {
   const app = Fastify({ logger: false });
+  const auth = await registerAuth(app, config);
   const rooms = new Map<string, Room>();
-  const io = new Server(app.server, { maxHttpBufferSize: 4096 });
+  const io = new Server(app.server, {
+    maxHttpBufferSize: 4096,
+    allowRequest: (request, callback) => {
+      const origin = request.headers.origin;
+      callback(null, !origin || auth.originAllowed(origin));
+    },
+  });
+  app.addHook("onSend", async (request, reply, payload) => {
+    reply.header("X-Content-Type-Options", "nosniff");
+    reply.header("Referrer-Policy", "same-origin");
+    if (
+      request.url.startsWith("/api/") ||
+      request.url === "/" ||
+      request.url.startsWith("/?")
+    )
+      reply.header("Cache-Control", "no-store");
+    return payload;
+  });
   app.get("/api/health", async () => ({
     ok: true,
-    mode: "local-prototype",
+    mode: config.production ? "public-trial" : "local-prototype",
     rooms: rooms.size,
   }));
-  const dist = fileURLToPath(new URL("../dist/", import.meta.url));
+  const dist = resolve(process.env.STATIC_DIR ?? "dist");
   if (existsSync(dist)) await app.register(fastifyStatic, { root: dist });
 
   const broadcast = (room: Room) => {
@@ -70,6 +90,14 @@ export async function createApp() {
       if (!room) throw new GameError("请先加入房间");
       return room;
     };
+    const requireHostLogin = () => {
+      if (
+        auth.required &&
+        !auth.authenticated(socket.handshake.headers.cookie)
+      ) {
+        throw new GameError("请先登录房主账号；若已登录，请刷新页面后重试");
+      }
+    };
     const attach = (room: Room) => {
       if (socket.data.roomCode && socket.data.roomCode !== room.code)
         throw new GameError("请在新标签页加入其他房间");
@@ -88,6 +116,7 @@ export async function createApp() {
       }
     };
     bind("room:create", (data) => {
+      requireHostLogin();
       if (socket.data.roomCode) throw new GameError("你已经在一个房间内");
       if (rooms.size >= 100) throw new GameError("房间较多，请稍后再试");
       const owned = [...rooms.values()].find(
@@ -132,6 +161,7 @@ export async function createApp() {
       return room;
     });
     bind("match:start", (data) => {
+      requireHostLogin();
       const room = current();
       room.start(socket.data.token, data.seconds as number);
       return room;
@@ -147,11 +177,13 @@ export async function createApp() {
       return room;
     });
     bind("match:pause", () => {
+      requireHostLogin();
       const room = current();
       room.pause(socket.data.token);
       return room;
     });
     bind("match:resume", () => {
+      requireHostLogin();
       const room = current();
       room.resume(socket.data.token);
       return room;

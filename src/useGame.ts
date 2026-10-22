@@ -105,5 +105,18 @@ export function useGame() {
       history.replaceState(null, "", location.pathname);
     });
   }
-  return { ...view, connected, busy, error, setError, request, leave };
+  function refreshConnection() {
+    socket.disconnect();
+    socket.connect();
+  }
+  return {
+    ...view,
+    connected,
+    busy,
+    error,
+    setError,
+    request,
+    leave,
+    refreshConnection,
+  };
 }

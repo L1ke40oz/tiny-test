@@ -24,7 +24,17 @@
     padding: 0 20px;
   }
   body .topbar {
-    height: 64px;
+    height: auto;
+    min-height: 64px;
+    padding: 12px 0;
+    flex-wrap: wrap;
+    column-gap: 10px;
+  }
+  body .host-account-button {
+    margin-right: 0;
+  }
+  body .connection {
+    margin-left: auto;
   }
   body .brand {
     font-size: 16px;
@@ -107,7 +117,9 @@
     font-size: 19px;
     margin-top: 0;
   }
-  body .room-heading .chapter { display: none; }
+  body .room-heading .chapter {
+    display: none;
+  }
   body .room-badge {
     padding: 7px 10px;
   }
@@ -246,5 +258,9 @@
   body .panel {
     padding: 17px;
   }
-  body .option { padding: 8px; gap: 6px; font-size: 12px; }
+  body .option {
+    padding: 8px;
+    gap: 6px;
+    font-size: 12px;
+  }
 }

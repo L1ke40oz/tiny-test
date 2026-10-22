@@ -1,0 +1,15 @@
+# 放入 tools 站点已有的根 location；不要与另一段 location / 重复。
+# 若 1Panel 已生成反代 location，仅核对这些代理参数即可。
+location / {
+    proxy_pass http://127.0.0.1:3030;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_read_timeout 300s;
+    proxy_send_timeout 300s;
+    proxy_buffering off;
+}

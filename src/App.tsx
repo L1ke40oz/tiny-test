@@ -4,6 +4,8 @@ import { useGame, initialCode } from "./useGame";
 import { Preferences } from "./Preferences";
 import { Ranking } from "./Ranking";
 import { HostLog } from "./HostLog";
+import { HostAccount } from "./HostAccount";
+import { useHostSession } from "./useHostSession";
 const colors = [
   "#b4d57c",
   "#e3ba82",
@@ -121,7 +123,12 @@ export function App() {
     request,
     leave,
     clockOffset,
+    refreshConnection,
   } = useGame();
+  const hostAccess = useHostSession(refreshConnection);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const mayCreate =
+    !hostAccess.session.required || hostAccess.session.authenticated;
   const [name, setName] = useState(sessionStorage.getItem("pbp-name") ?? "");
   const [code, setCode] = useState(initialCode);
   const [seconds, setSeconds] = useState(10);
@@ -159,6 +166,7 @@ export function App() {
         <a className="brand" href="/" aria-label="像素讨伐队首页">
           <span className="brand-icon">✦</span> 像素讨伐队
         </a>
+        <HostAccount {...hostAccess} open={loginOpen} setOpen={setLoginOpen} />
         <span className={`connection ${connected ? "online" : ""}`}>
           <i />
           {connected ? "营地已连接" : "连接中…"}
@@ -226,15 +234,18 @@ export function App() {
                 </div>
                 <button
                   className="button secondary"
-                  disabled={!connected || busy}
+                  disabled={!connected || busy || hostAccess.session.loading}
                   type="button"
-                  onClick={(event) => enter(event, true)}
+                  onClick={(event) =>
+                    mayCreate ? enter(event, true) : setLoginOpen(true)
+                  }
                 >
-                  创建一个房间 <span>＋</span>
+                  {mayCreate ? "创建一个房间" : "登录房主并创建房间"}{" "}
+                  <span>＋</span>
                 </button>
               </form>
               <p className="footnote">
-                本地试玩版 · 房主账号和战绩保存将在后续加入。
+                房主创建房间，队友填写昵称或扫码即可加入。
               </p>
             </section>
           </div>
@@ -545,7 +556,7 @@ export function App() {
       <footer>
         像素讨伐队 <span>一群朋友，一点知识，一场小冒险。</span>
         <Preferences />
-        <span>本地原型 v0.1</span>
+        <span>试玩版 v0.1</span>
       </footer>
     </div>
   );

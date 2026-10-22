@@ -1,13 +1,10 @@
 import { createApp } from "./app.js";
+import { readConfig } from "./config.js";
 
-if (process.env.NODE_ENV === "production") {
-  throw new Error(
-    "当前是本地原型，尚未实现房主账号与持久化，请勿作为正式公网服务启动。",
-  );
-}
-const { app } = await createApp();
+const config = readConfig();
+const { app } = await createApp(config);
 const address = await app.listen({
-  host: "127.0.0.1",
+  host: process.env.HOST ?? "127.0.0.1",
   port: Number(process.env.PORT ?? 3000),
 });
 console.log(`Game server: ${address}`);

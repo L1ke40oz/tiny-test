@@ -1,0 +1,46 @@
+name: pixel-boss-party
+services:
+  app:
+    build: .
+    image: pixel-boss-party:trial
+    restart: unless-stopped
+    init: true
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?请先运行部署配置脚本}
+      HOST_USERNAME: ${HOST_USERNAME:-host}
+      HOST_PASSWORD_HASH_FILE: /run/secrets/host_password_hash
+      SESSION_SECRET_FILE: /run/secrets/session_secret
+    secrets:
+      - host_password_hash
+      - session_secret
+    ports:
+      - "127.0.0.1:${APP_PORT:-3030}:3000"
+    read_only: true
+    mem_limit: 384m
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    logging:
+      driver: json-file
+      options: { max-size: 10m, max-file: "3" }
+secrets:
+  host_password_hash:
+    file: ./.secrets/host-password-hash
+  session_secret:
+    file: ./.secrets/session-secret

@@ -1,6 +1,6 @@
 # 部署与远程管理方案
 
-更新：2026-10-22。本文为待实施方案，所有服务器检查、DNS 调整和安装操作尚未执行。
+更新：2026-10-22。**本次已选择沿用 OpenResty + Cloudflare 代理，实际执行请看 [试运行步骤](TRIAL-DEPLOYMENT.md)。** 已通过用户的 1Panel 终端输出核实 Docker、Compose、资源与 OpenResty host 网络；3389 可达但国内 Windows 的 22 未开放，本机连接美国 VPS 的 SSH 超时。用户将在 1Panel 宿主终端执行部署。以下保留早期方案供架构参考，Tunnel 并非本次部署依赖。游戏尚未在 VPS 启动，未修改网站反代或 DNS。
 
 ## 1. 已知环境
 

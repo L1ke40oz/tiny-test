@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+.secrets
+local
+HANDOFF.md
+node_modules
+dist
+build
+output
+.playwright*
+coverage
+test-results

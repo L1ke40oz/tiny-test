@@ -113,6 +113,32 @@ p {
   background: var(--green);
   box-shadow: 0 0 0 4px #b7d58a0d;
 }
+.host-account-button {
+  margin-left: auto;
+  margin-right: 22px;
+  font-size: 11px;
+}
+.host-dialog {
+  width: min(410px, calc(100vw - 32px));
+  background: #202936;
+  color: var(--paper);
+  border: 1px solid var(--line);
+  padding: 28px;
+  box-shadow: 5px 5px #101722;
+}
+.host-dialog::backdrop {
+  background: #101722c9;
+}
+.host-dialog h2 {
+  font-size: 21px;
+}
+.host-dialog p {
+  font-size: 12px;
+  margin: 14px 0 22px;
+}
+.host-dialog .login-error {
+  color: var(--red);
+}
 main {
   min-height: calc(100dvh - 180px);
   padding: 38px 0 46px;
