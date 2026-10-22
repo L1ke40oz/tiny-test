@@ -1,0 +1,26 @@
+# 连接信息、密钥、运行数据仅留本地
+local/
+/HANDOFF.md
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.sqlite
+*.sqlite3
+*.db
+*.db-wal
+*.db-shm
+data/
+backups/
+logs/
+
+# 后续开发产物
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+.playwright-cli/
+.playwright/
+output/
