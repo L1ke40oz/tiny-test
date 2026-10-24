@@ -16,6 +16,7 @@ const state = {
   audioCtx: null,
   analyser: null,
   audioBuf: null,
+  ambient: 0,     // 环境底噪（RMS 的滑动平均）
   gravity: { x: 0, y: 0 },
   pointer: null, // {x, y} 按住屏幕时相对中心的偏移（-1~1）
   keys: { x: 0, y: 0 },
@@ -62,15 +63,35 @@ export const sensors = {
   /** 麦克风音量（RMS，0~1）；无麦克风时按住屏幕视为吹气 */
   micLevel() {
     if (!state.analyser) return state.pointer ? 0.5 : 0;
-    state.analyser.getFloatTimeDomainData(state.audioBuf);
-    let sum = 0;
-    for (let i = 0; i < state.audioBuf.length; i++) sum += state.audioBuf[i] * state.audioBuf[i];
-    return Math.sqrt(sum / state.audioBuf.length);
+    return readRms();
   },
+
+  /** 环境底噪：加入房间后在后台持续测量（约 1 秒的滑动平均），吹气类游戏用它做起点 */
+  get ambientLevel() { return state.ambient; },
+
+  /** 音频上下文状态（running / suspended / interrupted），用于现场调试 */
+  get audioState() { return state.audioCtx ? state.audioCtx.state : 'none'; },
 
   /** 是否处于“按住屏幕”状态（备用输入） */
   get pressing() { return !!state.pointer; },
 };
+
+/**
+ * iOS 开启麦克风后会切换音频会话，之前创建的 AudioContext 可能被挂起（suspended / interrupted），
+ * 挂起期间分析器读到的全是 0。每次读音量前检查一下，不在运行就尝试恢复。
+ */
+function readRms() {
+  wakeAudio();
+  state.analyser.getFloatTimeDomainData(state.audioBuf);
+  let sum = 0;
+  for (let i = 0; i < state.audioBuf.length; i++) sum += state.audioBuf[i] * state.audioBuf[i];
+  return Math.sqrt(sum / state.audioBuf.length);
+}
+
+function wakeAudio() {
+  const ac = state.audioCtx;
+  if (ac && ac.state !== 'running' && ac.state !== 'closed') ac.resume().catch(() => {});
+}
 
 /* ---------------- 陀螺仪 / 加速度计 ---------------- */
 
@@ -166,11 +187,17 @@ function setupStream(stream) {
   state.hasCamera = stream.getVideoTracks().length > 0;
   state.hasMic = stream.getAudioTracks().length > 0;
   if (state.hasMic && state.audioCtx) {
-    const source = state.audioCtx.createMediaStreamSource(stream);
+    // 只把音轨交给 Web Audio：部分 Safari 版本对“音视频混合流”取到的是静音
+    const source = state.audioCtx.createMediaStreamSource(new MediaStream(stream.getAudioTracks()));
     state.analyser = state.audioCtx.createAnalyser();
     state.analyser.fftSize = 1024;
     state.audioBuf = new Float32Array(state.analyser.fftSize);
     source.connect(state.analyser); // 不连到扬声器，避免啸叫
+    wakeAudio();
+    setInterval(() => {
+      const level = readRms();
+      state.ambient = state.ambient ? state.ambient * 0.9 + level * 0.1 : level;
+    }, 100);
   }
 }
 

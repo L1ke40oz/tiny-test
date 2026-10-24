@@ -238,8 +238,8 @@ body.phone .screen { padding-top: calc(env(safe-area-inset-top) + 24px); padding
 }
 
 /* 吹蜡烛 */
-.blow-game { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 40px; }
-.cake { display: flex; flex-direction: column; align-items: center; }
+.blow-game { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+.cake { display: flex; flex-direction: column; align-items: center; margin-bottom: 22px; }
 .candles { display: flex; gap: 26px; margin-bottom: -4px; }
 .candle {
   position: relative;
@@ -268,3 +268,5 @@ body.phone .screen { padding-top: calc(env(safe-area-inset-top) + 24px); padding
 .mic-fill { height: 100%; width: 0; background: #9a9483; }
 .mic-fill.on { background: var(--blue); }
 .mic-line { position: absolute; top: 0; bottom: 0; width: 3px; background: var(--ink); }
+.mic-tip { font-size: 15px; font-weight: 700; }
+.mic-debug { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; opacity: .55; }
