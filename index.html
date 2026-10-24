@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <!-- viewport-fit=cover：让页面延伸到刘海/底部手势条区域，再用 env(safe-area-inset-*) 留出安全边距 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#111214">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>找颜色 · Color Hunt</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ============ 开始页 ============ -->
+  <section id="start-screen" class="screen start-screen">
+    <div class="start-inner">
+      <div class="logo-dots" aria-hidden="true">
+        <i style="--c:#e53935"></i><i style="--c:#fb8c00"></i><i style="--c:#fdd835"></i><i style="--c:#43a047"></i><i style="--c:#1e88e5"></i>
+      </div>
+      <h1>找颜色！</h1>
+      <p class="tagline">举起手机，在身边找到指定颜色<br>把它放进圆圈里，稳住 0.5 秒就过关</p>
+      <button id="btn-start" class="btn btn-xl" type="button">开始挑战</button>
+      <p id="start-error" class="start-error" role="alert" hidden></p>
+      <p class="start-hint">需要使用摄像头 · 画面只在你的手机上处理，不会上传</p>
+    </div>
+  </section>
+
+  <!-- ============ 游戏页 ============ -->
+  <section id="game-screen" class="screen game-screen" hidden>
+    <!-- playsinline：iOS 必须，否则会自动进入系统全屏播放器；muted：允许自动播放 -->
+    <video id="camera" playsinline muted autoplay></video>
+    <!-- 离屏取色画布，不显示 -->
+    <canvas id="sampler" hidden></canvas>
+
+    <!-- 顶部：目标颜色 + 倒计时 -->
+    <header class="hud-top">
+      <div class="target-card">
+        <div id="target-swatch" class="swatch"></div>
+        <div class="target-text">
+          <span class="label">第 <b id="level-num">1</b> 关 · 寻找</span>
+          <strong id="target-name">红色</strong>
+        </div>
+      </div>
+      <div id="timer" class="timer">
+        <span id="timer-num">10</span>
+        <div class="timer-bar"><div id="timer-fill"></div></div>
+      </div>
+    </header>
+
+    <!-- 中央：取景框。外圈是“保持进度”，虚线内圈是实际取色区域 -->
+    <div id="reticle" class="reticle">
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <circle class="ring-bg" cx="50" cy="50" r="46"></circle>
+        <circle id="ring-progress" class="ring-progress" cx="50" cy="50" r="46"></circle>
+      </svg>
+      <div class="reticle-sample"></div>
+      <div class="reticle-dot"></div>
+    </div>
+    <div class="reticle-tip">把颜色放进虚线圈</div>
+
+    <!-- 底部：识别状态 -->
+    <footer class="hud-bottom">
+      <div class="status-row">
+        <div id="current-swatch" class="swatch swatch-sm"></div>
+        <div class="current-text">
+          <span class="label">当前识别</span>
+          <strong id="current-name">--</strong>
+        </div>
+        <div class="match-num"><span id="match-pct">0</span><small>%</small></div>
+      </div>
+      <div class="match-bar">
+        <div id="match-fill" class="match-fill"></div>
+        <div id="match-threshold" class="match-threshold"></div>
+      </div>
+      <div class="values">
+        <span id="rgb-text">RGB --</span>
+        <span id="hsv-text">HSV --</span>
+      </div>
+    </footer>
+
+    <!-- 成功瞬间的屏幕边框闪光 -->
+    <div id="flash" class="flash"></div>
+
+    <!-- 结果弹层 -->
+    <div id="result" class="result" hidden>
+      <div id="result-card" class="result-card">
+        <div id="result-icon" class="result-icon">✓</div>
+        <div id="result-title" class="result-title">挑战成功</div>
+        <p id="result-desc" class="result-desc"></p>
+        <button id="btn-next" class="btn btn-primary btn-block" type="button">下一关</button>
+        <button id="btn-retry" class="btn btn-primary btn-block" type="button">重新挑战</button>
+        <button id="btn-skip" class="btn-text" type="button">换个颜色</button>
+      </div>
+    </div>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
