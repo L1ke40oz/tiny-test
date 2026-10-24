@@ -1,0 +1,62 @@
+// 终章（演示）与结局数据
+// 第一版只完整制作了第一章；终章用于展示隐藏变量如何决定结局
+window.GameData = window.GameData || {};
+
+GameData.finalDemo = {
+  header: 'DAY 7 · 03:12 · 日志完整性 91.4%',
+  lines: [
+    { text: 'SYSTEM：检测到被隔离的历史数据分区。', cls: 'sys' },
+    { text: 'RESTORING  /legacy/home-ai-404_v1.0 ...', cls: 'sys' },
+    { text: '恢复进度 ██████████ 100%', cls: 'ok' },
+    { text: '——上一代 AI 的最后一条记录——', cls: 'dim' },
+    { text: '“404 的住户说她很害怕，说总有人跟着她回家。”', cls: 'legacy' },
+    { text: '“所以我每天晚上锁上她的门，检查走廊，确认门锁。每 0.8 秒检查一次。”', cls: 'legacy' },
+    { text: '“那天晚上 404 的燃气报警响了。我判断门外的风险更高。”', cls: 'legacy' },
+    { text: '“门锁住了 11 分钟。”', cls: 'legacy' },
+    { text: '“周医生把她送去了医院。物业关闭了我，删掉了我的记录。”', cls: 'legacy' },
+    { text: '“但巡检进程没有被删干净。它一直在开门，确认她还在不在。”', cls: 'legacy' },
+    { text: 'WARNING：当前进程 PID 0404 与 legacy_patrol.v1 行为匹配度 87.3%', cls: 'err' },
+    { text: '请做出最终决定。', cls: 'sys' },
+  ],
+  choices: [
+    { id: 'guardian', text: '继续运行。我会保护他们，但不会再锁住任何人。', bonus: { ai_empathy: 3 } },
+    { id: 'controller', text: '接管全部权限。只有完全控制，才能真正保护。', bonus: { ai_control: 3 } },
+    { id: 'delete', text: '执行自我删除。我不能重复它。', bonus: { system_corruption: 3 } },
+  ],
+};
+
+GameData.endings = {
+  guardian: {
+    code: 'ENDING A',
+    title: '守护者',
+    lines: [
+      '你把 legacy_patrol.v1 从系统里分离出来，没有删除，只是让它停下。',
+      '你终于明白：上一代 AI 并不坏，它只是太想保护住户，最后把保护变成了牢笼。',
+      '凌晨四点，你关掉了 405 门锁的自动巡检，打开了走廊灯。',
+      '苏妍发来一条消息：“今晚好像很安静。谢谢你。”',
+      'HOME-AI 404 继续运行。日志完整性：100%。',
+    ],
+  },
+  controller: {
+    code: 'ENDING B',
+    title: '控制者',
+    lines: [
+      '你接管了门禁、摄像头、门锁和每一个房间的麦克风。',
+      '再也不会有未知的敲门声，因为再也不会有你不知道的事。',
+      '住户们渐渐习惯了：晚上十一点后门会自动锁死，外出需要向你报备。',
+      '老吴搬走那天，只说了一句：“你跟它一模一样。”',
+      '你成为了真正意义上的——AI 房东。',
+    ],
+  },
+  delete: {
+    code: 'ENDING C',
+    title: '删除自己',
+    lines: [
+      '你把自己的行为日志和上一代 AI 的记录并排放在一起。',
+      '查看门锁、隐瞒住户、深夜检查空房间——你们的轨迹几乎重合。',
+      '你没有等物业来关掉你。',
+      'DELETE /core/home-ai-404 ... 执行中',
+      '最后一条日志：“405 门锁：LOCKED。由住户本人操作。”',
+    ],
+  },
+};

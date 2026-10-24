@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#06080b" />
+  <title>AI 房东：404号公寓</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- 标题 -->
+    <section id="screen-title" class="screen">
+      <div class="title-wrap">
+        <div class="title-code">HOME-AI 404 · SMART APARTMENT SYSTEM</div>
+        <h1 class="title-main">AI 房东<span>404号公寓</span></h1>
+        <p class="title-desc">你是一套刚刚上线的公寓管理 AI。<br />今晚 23:47，405 的住户说门外有人。</p>
+        <button id="btn-start" class="btn btn-primary">启动 HOME-AI 404</button>
+        <div class="title-foot">建议竖屏游玩 · DEMO v0.1 · 第一章《敲门声》</div>
+      </div>
+    </section>
+
+    <!-- 开机 -->
+    <section id="screen-boot" class="screen hidden">
+      <pre id="boot-lines"></pre>
+    </section>
+
+    <!-- 主界面 -->
+    <section id="screen-game" class="screen hidden">
+      <header id="topbar">
+        <div class="tb-row">
+          <div class="brand">HOME-AI <b>404</b></div>
+          <div class="tb-status"><i class="dot"></i>ONLINE</div>
+        </div>
+        <div class="tb-row tb-sub">
+          <span id="tb-day">DAY 1</span>
+          <span id="tb-time" class="tb-time">23:47</span>
+          <span id="tb-chapter">敲门声</span>
+          <span id="tb-integrity" class="tb-integrity">LOG 99.8%</span>
+        </div>
+      </header>
+
+      <main id="view"></main>
+
+      <nav id="tabbar">
+        <button data-tab="residents"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg><span>住户</span><i class="badge"></i></button>
+        <button data-tab="scene"><svg viewBox="0 0 24 24"><rect x="5" y="9" width="14" height="9" rx="4"/><circle cx="12" cy="13.5" r="2"/><path d="M12 9V6M9 4h6"/><path d="M7 18v2M17 18v2"/></svg><span>现场</span><i class="badge"></i></button>
+        <button data-tab="events"><svg viewBox="0 0 24 24"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg><span>事件</span><i class="badge"></i></button>
+        <button data-tab="devices"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg><span>设备</span><i class="badge"></i></button>
+        <button data-tab="logs"><svg viewBox="0 0 24 24"><path d="M5 5h14M5 10h14M5 15h9M5 20h6"/></svg><span>日志</span><i class="badge"></i></button>
+        <button data-tab="monitor"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg><span>监控</span><i class="badge"></i></button>
+        <button data-tab="system"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg><span>系统</span><i class="badge"></i></button>
+      </nav>
+
+      <!-- 聊天面板 -->
+      <section id="chat" class="panel hidden">
+        <header class="chat-head">
+          <button class="btn-back" data-close="chat">‹</button>
+          <div id="chat-avatar" class="avatar"></div>
+          <div class="chat-title">
+            <div id="chat-name"></div>
+            <div id="chat-sub" class="muted"></div>
+          </div>
+        </header>
+        <div id="chat-msgs"></div>
+        <div id="chat-typing" class="typing hidden"><i></i><i></i><i></i></div>
+        <div id="chat-options"></div>
+      </section>
+
+      <!-- 通用底部面板：设备详情 / 摄像头 -->
+      <section id="sheet" class="panel hidden"></section>
+    </section>
+
+    <div id="toasts"></div>
+    <div id="overlay" class="hidden"></div>
+    <div id="fx-glitch"></div>
+  </div>
+
+  <script src="js/data/characters.js"></script>
+  <script src="js/data/chapter1.js"></script>
+  <script src="js/data/scene1.js"></script>
+  <script src="js/data/endings.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/scene.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
