@@ -1,0 +1,179 @@
+{
+  "owner": "L1ke40oz",
+  "target": "tiny-test",
+  "created_at": "2026-10-25T15:49:46.292308+00:00",
+  "method": "History-preserving subtree imports; original branch heads retained under archive/<repository>/<branch>",
+  "repositories": [
+    {
+      "name": "ai-landlord-v2",
+      "repository_id": 1431922555,
+      "default_branch": "main",
+      "head": "3e66ba8390071a87126795d55d45a691fb3ef775",
+      "tree": "9e58b52cf34037373c8e95663b435f1c04040ffd",
+      "refs": {
+        "refs/heads/main": "3e66ba8390071a87126795d55d45a691fb3ef775"
+      },
+      "files": 17,
+      "commits": 2,
+      "lfs_files": 0,
+      "wiki": null,
+      "bundle": "ai-landlord-v2.bundle",
+      "visibility": "public",
+      "pages": {
+        "url": "https://api.github.com/repos/L1ke40oz/ai-landlord-v2/pages",
+        "status": "built",
+        "cname": null,
+        "custom_404": false,
+        "html_url": "https://l1ke40oz.github.io/ai-landlord-v2/",
+        "build_type": "legacy",
+        "source": {
+          "branch": "main",
+          "path": "/"
+        },
+        "public": true,
+        "protected_domain_state": null,
+        "pending_domain_unverified_at": null,
+        "https_enforced": true
+      },
+      "import_commit": "c842b9e46ddf3eb977f927381059bef26650f1c8"
+    },
+    {
+      "name": "ai-landlord",
+      "repository_id": 1431889886,
+      "default_branch": "main",
+      "head": "77d38f81ebc3e21e23167220e1e60e4412281f94",
+      "tree": "3e73c3238e2e1b098ee7d99afdf976f6607459f7",
+      "refs": {
+        "refs/heads/main": "77d38f81ebc3e21e23167220e1e60e4412281f94"
+      },
+      "files": 15,
+      "commits": 2,
+      "lfs_files": 0,
+      "wiki": null,
+      "bundle": "ai-landlord.bundle",
+      "visibility": "public",
+      "pages": null,
+      "import_commit": "9b5efdda27b23d5220fedaff61451042cf1643ca"
+    },
+    {
+      "name": "phone-party",
+      "repository_id": 1431831771,
+      "default_branch": "main",
+      "head": "5002ac1963935a9127920ac4a9738388a4487b80",
+      "tree": "44d4cc67c40ca4639300d79cf3a94c36788cc22e",
+      "refs": {
+        "refs/heads/main": "5002ac1963935a9127920ac4a9738388a4487b80"
+      },
+      "files": 24,
+      "commits": 2,
+      "lfs_files": 0,
+      "wiki": null,
+      "bundle": "phone-party.bundle",
+      "visibility": "public",
+      "pages": null,
+      "import_commit": "dbe93e5b01de6490b4150e7038f5e941d5875417"
+    },
+    {
+      "name": "color-hunt",
+      "repository_id": 1431782751,
+      "default_branch": "main",
+      "head": "ed81cab791f663a03c0bd91a9c9b8865f00d3ef2",
+      "tree": "4060fde876ba1094ae0bb0a3f086e83e08f636e6",
+      "refs": {
+        "refs/heads/main": "ed81cab791f663a03c0bd91a9c9b8865f00d3ef2"
+      },
+      "files": 4,
+      "commits": 1,
+      "lfs_files": 0,
+      "wiki": null,
+      "bundle": "color-hunt.bundle",
+      "visibility": "public",
+      "pages": null,
+      "import_commit": "b0d82b18f5c2b4ed40b37112d72d2f91ddba4784"
+    },
+    {
+      "name": "pixel-boss-party",
+      "repository_id": 1429348937,
+      "default_branch": "main",
+      "head": "c64271d32edc19c78b91f06c5e7297846ec27112",
+      "tree": "ad08d662638e93b74d388c02327b410012d8fba5",
+      "refs": {
+        "refs/heads/main": "c64271d32edc19c78b91f06c5e7297846ec27112"
+      },
+      "files": 43,
+      "commits": 3,
+      "lfs_files": 0,
+      "wiki": null,
+      "bundle": "pixel-boss-party.bundle",
+      "visibility": "public",
+      "pages": null,
+      "import_commit": "b27929db682f9c7da025b67eacf3cc1645b7cfe3"
+    },
+    {
+      "name": "rag_comparison_experiment",
+      "repository_id": 1417144526,
+      "default_branch": "main",
+      "head": "2af1fab2186e5c1c17a57960e05abd6c1432af4e",
+      "tree": "a5049561865be9de315677abc051ccd4cf290bb9",
+      "refs": {
+        "refs/heads/main": "2af1fab2186e5c1c17a57960e05abd6c1432af4e"
+      },
+      "files": 19,
+      "commits": 3,
+      "lfs_files": 0,
+      "wiki": null,
+      "bundle": "rag_comparison_experiment.bundle",
+      "visibility": "public",
+      "pages": {
+        "url": "https://api.github.com/repos/L1ke40oz/rag_comparison_experiment/pages",
+        "status": null,
+        "cname": null,
+        "custom_404": false,
+        "html_url": "https://l1ke40oz.github.io/rag_comparison_experiment/",
+        "build_type": "workflow",
+        "source": {
+          "branch": "main",
+          "path": "/"
+        },
+        "public": true,
+        "protected_domain_state": null,
+        "pending_domain_unverified_at": null,
+        "https_enforced": true
+      },
+      "import_commit": "bd609b378d328b5a57ab146d11ee880c653d7467"
+    },
+    {
+      "name": "sand-painting",
+      "repository_id": 1373135690,
+      "default_branch": "main",
+      "head": "6b3f9caa8d087c046995ee595448dddf965a67d9",
+      "tree": "b1c297ec960f79a7164cbb77f1ba028676a5f7d6",
+      "refs": {
+        "refs/heads/main": "6b3f9caa8d087c046995ee595448dddf965a67d9"
+      },
+      "files": 2,
+      "commits": 4,
+      "lfs_files": 0,
+      "wiki": null,
+      "bundle": "sand-painting.bundle",
+      "visibility": "public",
+      "pages": {
+        "url": "https://api.github.com/repos/L1ke40oz/sand-painting/pages",
+        "status": "built",
+        "cname": null,
+        "custom_404": false,
+        "html_url": "https://l1ke40oz.github.io/sand-painting/",
+        "build_type": "legacy",
+        "source": {
+          "branch": "main",
+          "path": "/"
+        },
+        "public": true,
+        "protected_domain_state": null,
+        "pending_domain_unverified_at": null,
+        "https_enforced": true
+      },
+      "import_commit": "e39c59a9b36c8d39cb93b5303336e330a3624a86"
+    }
+  ]
+}

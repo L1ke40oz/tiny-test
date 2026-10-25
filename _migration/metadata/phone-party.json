@@ -1,0 +1,46 @@
+{
+  "id": 1431831771,
+  "name": "phone-party",
+  "full_name": "L1ke40oz/phone-party",
+  "html_url": "https://github.com/L1ke40oz/phone-party",
+  "description": null,
+  "visibility": "public",
+  "default_branch": "main",
+  "size": 52,
+  "created_at": "2026-10-24T05:02:48Z",
+  "updated_at": "2026-10-24T05:23:34Z",
+  "pushed_at": "2026-10-24T05:23:30Z",
+  "has_wiki": true,
+  "has_pages": false,
+  "has_discussions": false,
+  "homepage": null,
+  "fork": false,
+  "forks_count": 0,
+  "stargazers_count": 0,
+  "open_issues_count": 0,
+  "license": null,
+  "topics": [],
+  "branches": [
+    {
+      "name": "main",
+      "commit": {
+        "sha": "5002ac1963935a9127920ac4a9738388a4487b80",
+        "url": "https://api.github.com/repos/L1ke40oz/phone-party/commits/5002ac1963935a9127920ac4a9738388a4487b80"
+      },
+      "protected": false,
+      "protection": {
+        "enabled": false,
+        "required_status_checks": {
+          "enforcement_level": "off",
+          "contexts": [],
+          "checks": []
+        }
+      },
+      "protection_url": "https://api.github.com/repos/L1ke40oz/phone-party/branches/main/protection"
+    }
+  ],
+  "tags": [],
+  "issues": [],
+  "releases": [],
+  "discussion_count": 0
+}
