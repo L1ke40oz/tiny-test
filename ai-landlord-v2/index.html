@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#06080b" />
+  <title>AI 房东：404号公寓</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- 标题 -->
+    <section id="screen-title" class="screen">
+      <div class="title-wrap">
+        <div class="title-code">HOME-AI 404 · SMART APARTMENT SYSTEM</div>
+        <h1 class="title-main">AI 房东<span>404号公寓</span></h1>
+        <p class="title-desc">
+          你是今晚刚上线的公寓管理 AI。<br />
+          上线第 17 秒，405 的女生说：门外有人敲了三下门。<br />
+          可门禁显示——过去半小时，没有人进过 4 楼。
+        </p>
+        <button id="btn-start" class="btn btn-primary">启动 HOME-AI 404</button>
+        <div class="title-foot">三幕推理 · 第一视角 · 竖屏游玩</div>
+      </div>
+    </section>
+
+    <!-- 开机 -->
+    <section id="screen-boot" class="screen hidden"><pre id="boot-lines"></pre></section>
+
+    <!-- 主界面 -->
+    <section id="screen-game" class="screen hidden">
+      <header id="topbar">
+        <div class="tb-row">
+          <div class="brand">HOME-AI <b>404</b></div>
+          <div class="tb-status"><i class="dot"></i>ONLINE</div>
+        </div>
+        <div class="tb-row tb-sub">
+          <span id="tb-day">DAY 1</span>
+          <span id="tb-time" class="tb-time">23:47</span>
+          <span id="tb-chapter">谁在敲门</span>
+          <span id="tb-integrity" class="tb-integrity">LOG 99.8%</span>
+        </div>
+      </header>
+
+      <div id="goalbar" class="goalbar hidden"></div>
+
+      <main id="view"></main>
+
+      <nav id="tabbar">
+        <button data-tab="chat"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg><span>对话</span><i class="badge"></i></button>
+        <button data-tab="scene"><svg viewBox="0 0 24 24"><path d="M2 7h11v10H2z"/><path d="M13 11l7-3v8l-7-3"/></svg><span>现场</span><i class="badge"></i></button>
+        <button data-tab="case"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h5"/></svg><span>卷宗</span><i class="badge"></i></button>
+        <button data-tab="system"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg><span>系统</span><i class="badge"></i></button>
+      </nav>
+
+      <!-- 聊天面板 -->
+      <section id="chat" class="panel hidden">
+        <header class="chat-head">
+          <button class="btn-back" data-close="chat">‹</button>
+          <div id="chat-avatar" class="avatar"></div>
+          <div class="chat-title">
+            <div id="chat-name"></div>
+            <div id="chat-sub" class="muted"></div>
+          </div>
+        </header>
+        <div id="chat-dossier" class="dossier hidden"></div>
+        <div id="chat-msgs"></div>
+        <div id="chat-typing" class="typing hidden"><i></i><i></i><i></i></div>
+        <div id="chat-options"></div>
+      </section>
+
+      <!-- 底部面板：门 / 物品 / 线索 -->
+      <section id="sheet" class="panel hidden"></section>
+    </section>
+
+    <div id="toasts"></div>
+    <div id="overlay" class="hidden"></div>
+    <div id="fx-glitch"></div>
+  </div>
+
+  <script src="js/data/characters.js"></script>
+  <script src="js/data/chapter1.js"></script>
+  <script src="js/data/endings.js"></script>
+  <script src="js/art.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
