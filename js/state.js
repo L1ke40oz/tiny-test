@@ -1,4 +1,4 @@
-// gameState：所有会变化的数据都在这里，方便以后存档
+// gameState：所有会变化的数据都在这里
 window.GameState = {
   create(chapterId) {
     const ch = GameData.chapters[chapterId];
@@ -10,27 +10,25 @@ window.GameState = {
     return {
       chapterId,
       day: ch.day,
-      clock: ch.startTime,          // 当天秒数
-      integrity: ch.integrity,      // 日志完整性
+      clock: ch.startTime,
+      integrity: ch.integrity,
       phase: 'play',                // play → finale → epilogue → end
 
-      // 隐藏变量
+      actIndex: 0,
+      briefShown: false,
+
       vars: {
-        trust_401: 0, trust_402: 0, trust_403: 0, trust_405: 0, trust_406: 0,
+        trust_403: 0, trust_405: 0, trust_406: 0,
         ai_empathy: 0, ai_control: 0, ai_curiosity: 0, system_corruption: 0,
       },
 
-      flags: {},      // 剧情标记 & 线索（线索也是 flag）
-      clues: [],      // 已发现线索，按发现顺序
+      flags: {},
+      clues: [],
 
-      perms: {
-        messages: true, locks: true, lights: true, temp: true, basicLog: true,
-        access: false,   // 门禁历史
-        camera: false,   // 公共区域摄像头
-        anomaly: false,  // 异常行为记录
-        history: false,  // 历史系统日志
-        legacy: false,   // 上一代 AI 残留数据
-      },
+      // 线索连线图
+      board: { edges: [], unlocked: {}, done: false },
+
+      perms: { camera: false },
 
       devices: clone(ch.devices),
       lockHistory: clone(ch.lockHistory),
@@ -40,20 +38,18 @@ window.GameState = {
       unread,
       usedTopics: {},
       usedGroups: {},
-      busy: {},       // 某住户还有未发完的消息
+      busy: {},
       typing: {},
 
       processes: [
         { pid: '0001', name: 'home_core', st: 'RUNNING' },
         { pid: '0012', name: 'device_bus', st: 'RUNNING' },
-        { pid: '0031', name: 'msg_daemon', st: 'RUNNING' },
         { pid: '0107', name: 'log_writer', st: 'RUNNING' },
       ],
 
-      // 现场探索：R-04 所在位置、看过的热点、物品
-      scene: { node: ch.scene ? ch.scene.start : null, visited: {}, examined: {}, override: false },
+      scene: { view: ch.scene.startView, examined: {}, override: false },
       items: [],
-      selItem: null,  // 正在“使用”的物品
+      selItem: null,
 
       newClue: false,
       newLog: false,

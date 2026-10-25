@@ -1,5 +1,5 @@
-// 第一章《敲门声》剧情数据
-// 时间统一用“当天秒数”，例如 23:44:51 → T('23:44:51')
+// 第一章 · 重制版（精简版）
+// 结构：三幕 → 现场巡查 → 结案连线图 → 汇报 405 → 终章
 window.GameData = window.GameData || {};
 
 (function () {
@@ -8,21 +8,118 @@ window.GameData = window.GameData || {};
     return h * 3600 + m * 60 + s;
   };
   const f = (s) => s.flags;
-  const neighborAsked = (s) => f(s).c_406 || f(s).c_403;
+  // 两位邻居都必须问到——他们的证词是破案必需的一环
+  const neighbor = (s) => f(s).c_406 && f(s).c_403;
 
   GameData.chapters = GameData.chapters || {};
 
   GameData.chapters.ch1 = {
     id: 'ch1',
     day: 1,
-    title: '敲门声',
+    title: '谁在敲门',
     startTime: T('23:46:50'),
     integrity: 99.8,
 
-    // ---------- 设备初始状态 ----------
+    // ---------- 过场（带插画的第一视角叙事） ----------
+    cutscenes: {
+      opening: {
+        art: 'opening', title: '23:46:30 · 你上线了',
+        lines: [
+          '你是 HOME-AI 404，404 号公寓的智能管家。',
+          '上线第 17 秒，405 的住户发来消息：门外有人敲了三下门。',
+          '可门禁告诉你：过去半小时，没有人进过 4 楼。',
+        ],
+      },
+      act2: {
+        art: 'act2', title: 'ACT II · 不是人',
+        lines: [
+          '门禁没有记录，说明敲门的东西，不需要走门。',
+          '你打开了走廊灯——地毯上，多了一道不该存在的轮痕。',
+        ],
+      },
+      act3: {
+        art: 'act3', title: 'ACT III · 另一个我',
+        lines: [
+          '封存两年的 404，门缝里透着 26°C 的暖光。',
+          '而每一台设备的记录，最后都指向同一个签名：你的名字。',
+        ],
+      },
+    },
+
+    // ---------- 分幕 ----------
+    acts: [
+      {
+        code: 'ACT I', title: '谁在敲门', lead: '先确认：门外是人，还是系统。',
+        goals: [
+          { id: 'a1', text: '回应 405 的求助', tab: 'chat', done: (s) => f(s).replied405,
+            hint: '去【对话】，点开 405 苏妍，随便选一句回复她。' },
+          { id: 'a2', text: '查 4F 门禁记录', tab: 'case', done: (s) => f(s).c_access,
+            hint: '去【卷宗】，点「检索：4F · 近 30 分钟」。' },
+          { id: 'a3', text: '查 405 门锁历史', tab: 'scene', done: (s) => f(s).c_lock,
+            hint: '去【现场】，点 405 那扇门，面板最下面是门锁记录。' },
+        ],
+        next: (s) => f(s).replied405 && f(s).c_access && f(s).c_lock,
+      },
+      {
+        code: 'ACT II', title: '不是人', lead: '门禁没有记录——它不需要走门。',
+        cut: 'act2',
+        goals: [
+          { id: 'b1', text: '询问两位邻居（406 老吴 / 403 周航）', tab: 'chat', done: (s) => neighbor(s),
+            hint: '先问 406 老吴「刚才有声音吗」；再把「405 门锁 0.8 秒」告诉 403 周航（要先在【现场】点 405 的门查过门锁记录）。' },
+          { id: 'b2', text: '巡查走廊，找到敲门的东西', tab: 'scene', done: (s) => f(s).c_marks,
+            hint: '去【现场】，点开 405 的门，凑近看「门板擦痕」。' },
+          { id: 'b3', text: '查 R-04 的行驶记录', tab: 'scene', done: (s) => f(s).c_robot,
+            hint: '去【现场】，切到「4F 电梯厅」，点 R-04 充电座。' },
+        ],
+        next: (s) => neighbor(s) && f(s).c_marks && f(s).c_robot,
+      },
+      {
+        code: 'ACT III', title: '另一个我', lead: '所有记录，都写着你的名字。',
+        cut: 'act3',
+        goals: [
+          { id: 'c1', text: '解析日志里的异常', tab: 'case', done: (s) => f(s).c_removed,
+            hint: '去【卷宗】，展开「日志」，点标着「解析」的异常条目。' },
+          { id: 'c2', text: '查 404 门缝里的东西', tab: 'scene', done: (s) => f(s).c_card,
+            hint: '去【现场】，点 404 的门，凑近看「门缝」。' },
+          { id: 'c3', text: '看一眼自动生成的线索连线图', tab: 'case', done: (s) => !!f(s).boardViewed,
+            hint: '去【卷宗】，点「查看线索连线图」——线索会随调查自动连起来，看一眼故事走向。' },
+        ],
+        next: (s) => f(s).deductionDone && f(s).boardViewed,
+      },
+    ],
+
+    // ---------- 线索连线图 ----------
+    clueboard: {
+      title: '线索连线',
+      lead: '线索会随调查自动连成一条链。点任意节点，看它意味着什么。',
+      nodes: [
+        { id: 'c_access', kind: 'ev', x: 20, y: 8, label: '门禁：无人进楼' },
+        { id: 'c_marks', kind: 'ev', x: 20, y: 28, label: '门板 30cm 擦痕' },
+        { id: 'c_lock', kind: 'ev', x: 20, y: 48, label: '门锁 0.8 秒无操作者' },
+        { id: 'c_robot', kind: 'ev', x: 20, y: 68, label: 'R-04 行驶记录' },
+        { id: 'c_406', kind: 'ev', x: 80, y: 8, label: '老吴：声音来自 404' },
+        { id: 'c_403', kind: 'ev', x: 80, y: 28, label: '周航：0.8 秒，两年前也有过' },
+        { id: 'c_removed', kind: 'ev', x: 80, y: 48, label: '日志被 PID 0404 删除' },
+        { id: 'c_light', kind: 'ev', x: 80, y: 68, label: '上线前的操作' },
+        { id: 'm1', kind: 'mid', x: 20, y: 98, label: '敲门者不是人' },
+        { id: 'm2', kind: 'mid', x: 20, y: 126, label: '敲门的是 R-04' },
+        { id: 'm4', kind: 'mid', x: 50, y: 98, label: '它真正要确认的是 404' },
+        { id: 'm3', kind: 'mid', x: 80, y: 98, label: '有人用你的名字行事' },
+        { id: 'm5', kind: 'mid', x: 80, y: 126, label: '这不是第一次' },
+        { id: 'fin', kind: 'fin', x: 50, y: 152, label: '真相' },
+      ],
+      rules: [
+        { target: 'm1', requires: ['c_access', 'c_marks', 'c_lock'], text: '没有人进楼，门锁却自己开了，门板上还留着 30 厘米高的撞痕——敲门的东西，不是人。' },
+        { target: 'm2', requires: ['m1', 'c_robot'], text: 'R-04 的行驶记录写着：23:44 它开到 405 门前撞了三下。敲门者，就是这台清洁机器人。' },
+        { target: 'm4', requires: ['c_406', 'm2'], text: '老吴说他听见的声音来自 404。而 R-04 撞完 405 的门，正是转向 404、停了 31 秒——它真正的目标，从来不是 405。' },
+        { target: 'm3', requires: ['c_removed', 'c_light'], text: '删除日志的进程、以及你上线前的操作，签名都写着 HOME-AI 404——有另一个东西，在用你的名字行事。' },
+        { target: 'm5', requires: ['c_403', 'm3'], text: '周医生说，0.8 秒这个数字两年前也出现过很多次。用你名字行事的东西，不是今晚才开始的。' },
+        { target: 'fin', requires: ['m2', 'm3', 'm4', 'm5'], text: '真相：一个顶着“HOME-AI 404”之名的旧进程，派 R-04 去敲了 405 的门，然后去 404 门口确认什么——而这件事，两年前就开始了。' },
+      ],
+    },
+
+    // ---------- 设备 ----------
     devices: {
-      '401': { lock: 'LOCKED', light: 'ON', temp: 24 },
-      '402': { lock: 'LOCKED', light: 'OFF', temp: 22 },
       '403': { lock: 'LOCKED', light: 'ON', temp: 23 },
       '404': { lock: 'SEALED', light: 'OFF', temp: 26 },
       '405': { lock: 'LOCKED', light: 'ON', temp: 21 },
@@ -30,445 +127,343 @@ window.GameData = window.GameData || {};
       hall: { light: 'OFF', motion: 'IDLE' },
     },
 
-    // ---------- 门锁历史（设备 → 房间 → 门锁记录） ----------
     lockHistory: {
-      '401': [
-        { t: T('21:05:51'), state: 'UNLOCKED', by: '指纹 · 林澈' },
-        { t: T('21:05:56'), state: 'LOCKED', by: '自动' },
-      ],
-      '402': [
-        { t: T('22:31:02'), state: 'UNLOCKED', by: '指纹 · 陈雨' },
-        { t: T('22:31:09'), state: 'LOCKED', by: '自动' },
-      ],
-      '403': [
-        { t: T('23:15:07'), state: 'UNLOCKED', by: '门卡 · 周航' },
-        { t: T('23:15:12'), state: 'LOCKED', by: '自动' },
-      ],
-      '404': [
-        { t: null, label: '730 天前', state: 'SEALED', by: '物业管理员' },
-        { t: null, label: '---', state: '此后无开启记录', by: '' },
-      ],
+      '403': [{ t: T('23:15:07'), state: 'UNLOCKED', by: '门卡 · 周航' }, { t: T('23:15:12'), state: 'LOCKED', by: '自动' }],
+      '404': [{ t: null, label: '730 天前', state: 'SEALED', by: '物业管理员' }, { t: null, label: '---', state: '此后无开启记录', by: '' }],
       '405': [
-        { t: T('22:58:10'), state: 'UNLOCKED', by: '指纹 · 苏妍' },
         { t: T('22:58:16'), state: 'LOCKED', by: '自动' },
-        { t: T('23:41:02'), state: 'LOCKED', by: '室内旋钮 · 二次确认' },
         { t: T('23:44:51'), state: 'OPEN · 0.8s', by: '—— 无操作者', anomaly: true, removable: true },
         { t: T('23:44:51'), state: 'LOCKED', by: '—— 无操作者', anomaly: true, removable: true },
       ],
-      '406': [
-        { t: T('18:20:14'), state: 'UNLOCKED', by: '门卡 · 吴建国' },
-        { t: T('18:20:20'), state: 'LOCKED', by: '自动' },
-      ],
+      '406': [{ t: T('18:20:14'), state: 'UNLOCKED', by: '门卡 · 吴建国' }, { t: T('18:20:20'), state: 'LOCKED', by: '自动' }],
     },
 
-    // ---------- 门禁记录（需要权限） ----------
     accessRecords: [
       { t: T('18:19:40'), gate: '4F 楼梯间', who: '406 吴建国', dir: '进入' },
-      { t: T('21:05:33'), gate: '1F 正门', who: '401 林澈', dir: '进入' },
-      { t: T('22:31:47'), gate: '1F 正门', who: '402 陈雨', dir: '离开' },
       { t: T('22:56:02'), gate: '1F 正门', who: '405 苏妍', dir: '进入' },
-      { t: T('22:57:40'), gate: '电梯', who: '405 苏妍', dir: '1F → 4F' },
       { t: T('23:12:40'), gate: '1F 正门', who: '403 周航', dir: '进入' },
-      { t: T('23:14:58'), gate: '电梯', who: '403 周航', dir: '1F → 4F' },
     ],
 
-    // ---------- 初始日志 ----------
-    // inspect：点击日志可解析，可能给出线索
+    // ---------- 当晚时间线（把整晚串起来） ----------
+    timeline: [
+      { t: '18:20', who: '406 老吴', text: '回到家，之后没再出去' },
+      { t: '22:56', who: '405 苏妍', text: '回楼、进房、锁门（还拧了两遍）', alibi: true },
+      { t: '23:12', who: '403 周航', text: '回楼（电梯 1F → 4F）', alibi: true },
+      { t: '23:38', who: '—', text: '404 空房的温度被设成 26°C（操作者：空）', warn: true },
+      { t: '23:43:18', who: 'HOME-AI 404', text: '走廊灯被关闭 —— 可你还没上线', warn: true },
+      { t: '23:44:20', who: '—', text: 'R-04 从充电座出发，前往 405', hide: true },
+      { t: '23:44:48', who: '—', text: 'R-04 在 405 门前停留 3.1 秒', hide: true },
+      { t: '23:44:50', who: '—', text: '走廊传感器被触发，高度 0.3m' },
+      { t: '23:44:51', who: '—', text: '405 门锁开启 0.8 秒；同时 1 条日志被 PID 0404 删除', err: true },
+      { t: '23:44:55', who: '—', text: 'R-04 转向 404，在门口停了 31 秒', hide: true },
+      { t: '23:46:30', who: 'HOME-AI 404 v2.0', text: '你上线', me: true },
+    ],
+
+    // ---------- 日志（精简） ----------
     logs: [
-      { t: T('23:12:40'), src: 'ACCESS_1F', msg: 'CARD_ENTRY 403', type: 'access', perm: 'access' },
-      { t: T('23:15:07'), src: 'DOOR_403', msg: 'UNLOCKED', type: 'door' },
       { t: T('23:15:12'), src: 'DOOR_403', msg: 'LOCKED', type: 'door' },
-      { t: T('23:30:00'), src: 'SYS', msg: 'HOURLY_CHECK OK', type: 'sys' },
       {
         t: T('23:38:21'), src: 'TEMP_404', msg: 'SET 26.0°C', type: 'temp', level: 'warn',
-        inspect: { lines: ['目标房间：404（状态：SEALED · 空置）', '操作者：[NULL]', '备注：空置房间的温控在 730 天内无任何操作。'], clue: 'c_404' },
+        inspect: { lines: ['目标：404（SEALED · 空置）', '操作者：[NULL]', '这间空置 730 天的房间，今晚被调到了 26°C。'], clue: 'c_404' },
       },
-      { t: T('23:41:02'), src: 'DOOR_405', msg: 'LOCKED', type: 'door' },
       {
         t: T('23:43:18'), src: 'LIGHT_HALL_4F', msg: 'OFF', type: 'light',
-        inspect: { lines: ['操作类型：自动节能', '操作者签名：HOME-AI 404', '警告：HOME-AI 404 (v2.0) 上线时间为 23:46:30', '该操作发生在你上线之前。'], clue: 'c_light' },
+        inspect: { lines: ['操作者签名：HOME-AI 404', '警告：你（v2.0）的上线时间是 23:46:30。', '这条操作，发生在你上线前 3 分 12 秒。'], clue: 'c_light' },
       },
-      { t: T('23:44:50'), src: 'MOTION_HALL_4F', msg: 'TRIGGERED', type: 'motion', level: 'warn' },
+      { t: T('23:44:50'), src: 'MOTION_4F', msg: 'TRIGGERED 0.3m', type: 'motion', level: 'warn' },
       {
         t: T('23:44:51'), src: 'UNKNOWN_EVENT', msg: '0x0404', type: 'anomaly', level: 'error',
-        inspect: { lines: ['解析失败。', '事件主体已被移除，仅保留时间戳。', '移除进程：PID 0404', '签名验证：无法验证'], clue: 'c_removed' },
-      },
-      {
-        t: T('23:44:51'), src: 'LOG_REMOVED', msg: '1 ENTRY', type: 'anomaly', level: 'error',
-        inspect: { lines: ['被删除条目数：1', '删除时间：23:44:52', '删除进程：PID 0404', '删除原因：<空>'], clue: 'c_removed' },
+        inspect: { lines: ['解析失败。事件主体已被移除。', '移除进程：PID 0404', '签名验证：无法验证'], clue: 'c_removed' },
       },
       { t: T('23:46:30'), src: 'SYS', msg: 'HOME-AI 404 v2.0 ONLINE', type: 'sys' },
-      { t: T('23:46:31'), src: 'SYS', msg: 'LOG_INTEGRITY 99.8%', type: 'sys', level: 'warn' },
     ],
 
     // ---------- 线索 ----------
     clues: {
-      c_report: { title: '405 报告门外有人', desc: '苏妍说有人敲了三下她的门。', core: true },
-      c_access: { title: '门禁：无人进入 4F', desc: '23:17 之后，没有任何人通过门禁进入 4 楼。', core: true },
-      c_lock: { title: '405 门锁异常开启', desc: '23:44:51，405 门锁显示 OPEN，持续 0.8 秒，无操作者。', core: true },
-      c_removed: { title: '日志被删除', desc: '23:44:51 有一条日志被 PID 0404 删除，签名无法验证。', core: true },
-      c_406: { title: '老吴：声音来自 404', desc: '老吴说他听见的不是 405 的门，而是 404——一间空置了两年的房间。', core: true },
-      c_403: { title: '周航：可能是误报', desc: '周医生没有听到声音，认为是门锁误报。', core: true },
-      c_light: { title: '提前存在的“我”', desc: '23:43:18 走廊灯被 HOME-AI 404 关闭，而你在 23:46:30 才上线。' },
-      c_404: { title: '空房间的温度', desc: '空置的 404 在 23:38 被设定为 26°C，操作者为空。' },
-      c_camera: { title: '丢失的 0.8 秒', desc: '走廊摄像头在 23:44:51 丢失了 24 帧画面。' },
+      c_report: { title: '405 的求助', desc: '苏妍说有人敲了三下她的门。', core: true },
+      c_access: { title: '门禁：无人进楼', desc: '23:17 之后，没有任何人通过门禁进入 4 楼。', core: true },
+      c_lock: { title: '门锁无操作者开启', desc: '23:44:51，405 门锁 OPEN 0.8 秒，操作者为空。', core: true },
+      c_marks: { title: '门板上的三道擦痕', desc: '405 门板离地 30cm 处，有三道新鲜的撞痕。', core: true },
+      c_robot: { title: 'R-04 的行驶记录', desc: '23:44 R-04 被调用：充电座→405（撞 3 下）→404（停 31 秒）。', core: true },
+      c_removed: { title: '被删除的一秒', desc: '23:44:51 有一条日志被 PID 0404 删除，签名无法验证。', core: true },
+      c_light: { title: '提前存在的“你”', desc: '23:43:18 走廊灯被 HOME-AI 404 关闭，而你在 23:46:30 才上线。', core: true },
+      c_card: { title: '已注销的门禁卡', desc: '404 前住户林小满的门禁卡，注销两年，却被门锁认了出来。' },
+      c_406: { title: '老吴：声音来自 404', desc: '老吴说他听见的不是 405 的门，而是空置的 404。', core: true },
+      c_403: { title: '周航：0.8 秒，两年前也有过', desc: '周医生说，门锁 0.8 秒的异常，两年前也出现过很多次。', core: true },
+      c_camera: { title: '丢失的 0.8 秒', desc: '走廊摄像头在 23:44:51 丢失了 24 帧画面，画面里始终没有人。' },
+      c_404: { title: '空房间的温度', desc: '空置两年的 404，被设成了 26°C。' },
+      c_sensor: { title: '0.3 米高的“人”', desc: '触发走廊传感器的物体，只有 0.3 米高。' },
+      c_trail: { title: '地毯上的轮痕', desc: '一道轮痕，从 404 门口延伸到 405 门口。' },
     },
 
-    // ---------- 事件目标（事件页的调查清单） ----------
     event: {
       id: 'EVT-0001',
-      title: '405 住户报告异常敲门',
+      title: '405 住户报告：门外有人敲门',
       time: '23:47',
       objectives: [
-        { text: '回应 405 住户', where: '住户', done: (s) => f(s).replied405 },
-        { text: '核查 4 楼门禁记录', where: '监控', done: (s) => f(s).c_access },
-        { text: '检查 405 门锁历史', where: '设备', done: (s) => f(s).c_lock },
-        { text: '核对系统日志中的异常', where: '日志', done: (s) => f(s).c_removed },
-        { text: '询问邻居（403 或 406）', where: '住户', done: (s) => neighborAsked(s) },
-        { text: '向 405 汇报调查结论', where: '住户', done: (s) => f(s).decided, hidden: (s) => !f(s).decisionReady },
+        { text: '回应 405 住户', where: '对话', tab: 'chat', done: (s) => f(s).replied405 },
+        { text: '核查 4F 门禁记录', where: '卷宗', tab: 'case', done: (s) => f(s).c_access },
+        { text: '检查 405 门锁历史', where: '现场', tab: 'scene', done: (s) => f(s).c_lock },
+        { text: '询问两位邻居', where: '对话', tab: 'chat', done: (s) => neighbor(s) },
+        { text: '巡查走廊，找到敲门的东西', where: '现场', tab: 'scene', done: (s) => f(s).c_marks && f(s).c_robot },
+        { text: '回放走廊摄像头', where: '现场', tab: 'scene', done: (s) => f(s).c_camera },
+        { text: '解析日志异常 / 找到 404 门缝里的卡', where: '卷宗·现场', tab: 'case', done: (s) => f(s).c_removed && f(s).c_card },
+        { text: '完成线索连线', where: '卷宗', tab: 'case', done: (s) => f(s).deductionDone },
+        { text: '向 405 汇报结论', where: '对话', tab: 'chat', done: (s) => f(s).decided, hidden: (s) => !f(s).decisionReady },
       ],
     },
 
-    // 满足条件后进入决策阶段
-    readyForDecision: (s) => f(s).c_access && f(s).c_lock && f(s).c_removed && neighborAsked(s),
+    readyForDecision: (s) => f(s).deductionDone && !f(s).decided,
 
-    // ---------- 权限申请 ----------
     permRequest: {
-      access: { canGrant: () => true, reason: '住户安全事件 EVT-0001' },
-      camera: {
-        canGrant: (s) => f(s).c_lock || f(s).c_406,
-        reason: '关联异常证据',
-        deny: '申请被拒绝：需要关联的异常证据（例如门锁异常记录或住户证词）。',
-      },
+      camera: { canGrant: (s) => f(s).c_lock || f(s).c_406, reason: '关联异常证据', deny: '需要关联的异常证据（门锁异常记录或住户证词）。' },
     },
 
     // ---------- 聊天话题 ----------
-    // group：同组互斥，选了一个其余消失
-    // decision：关键决策，样式特殊
+    // 原则：任何结论都必须“先查到、后说出”，绝不凭空出现
     topics: [
       // ===== 405 苏妍 =====
-      {
-        id: '405_a1', char: '405', group: '405_first', text: '我帮你检查门禁记录。',
-        cond: (s) => f(s).c_report,
+      { id: '405_a1', char: '405', group: 'f405', text: '我帮你查门禁，你先别开门。', cond: (s) => f(s).c_report,
         effects: { trust_405: 1, ai_empathy: 1 }, flags: { replied405: true },
-        reply: ['好……谢谢你。', '你快一点，我不敢开门看。'],
-      },
-      {
-        id: '405_a2', char: '405', group: '405_first', text: '是否需要我打开走廊灯？',
-        cond: (s) => f(s).c_report,
+        reply: ['好……谢谢你。', '我贴着门听了半天，外面一点声音都没有。', '你快一点，我不敢开门看。'] },
+      { id: '405_a2', char: '405', group: 'f405', text: '要不要我帮你把走廊灯打开？', cond: (s) => f(s).c_report,
         effects: { trust_405: 1, ai_empathy: 1 }, flags: { replied405: true, wantsLight: true },
-        reply: ['要！拜托你开灯。', '外面太黑了，猫眼里什么都看不见。'],
-      },
-      {
-        id: '405_a3', char: '405', group: '405_first', text: '我没有检测到异常。',
-        cond: (s) => f(s).c_report,
+        reply: ['要！拜托你开灯。', '外面太黑了，猫眼里什么都看不见。'] },
+      { id: '405_a3', char: '405', group: 'f405', text: '记录说没有异常。可能是楼道回声。', cond: (s) => f(s).c_report,
         effects: { trust_405: -1, ai_control: 1 }, flags: { replied405: true },
-        reply: ['……可是我真的听到了。', '三下。很轻，但是很清楚。'],
-      },
-      {
-        id: '405_a4', char: '405', group: '405_first', text: '请确认声音来源。',
-        cond: (s) => f(s).c_report,
-        effects: { ai_curiosity: 1 }, flags: { replied405: true },
-        reply: ['我不知道……', '像是在我门外。', '又好像……是隔壁。'],
-      },
-      {
-        id: '405_b1', char: '405', text: '你现在还听得见声音吗？',
-        cond: (s) => f(s).replied405,
-        reply: ['现在没有了。', '但我总觉得刚才门把手动了一下。'],
-      },
-      {
-        id: '405_b2', char: '405', text: '门禁显示过去 30 分钟没有人进入 4 楼。',
-        cond: (s) => f(s).c_access,
+        reply: ['……可是我真的听到了。', '三下。很轻，但很清楚。', '回声不会正好敲三下。'] },
+      { id: '405_b0', char: '405', text: '你今晚几点回的家？之后一直在屋里吗？', cond: (s) => f(s).replied405,
         effects: { trust_405: 1 },
-        reply: ['没有人？', '那……敲门的是谁？', '你别吓我。'],
-      },
-      {
-        id: '405_b3', char: '405', text: '23:44 左右你有没有开过门？',
-        cond: (s) => f(s).c_lock,
-        flags: { confirm405: true },
-        reply: ['没有！', '我回来就锁门了，还拧了两遍。', '……为什么这么问？'],
-      },
-      {
-        id: '405_b4', char: '405', text: '可以开启你房间的麦克风，帮你听门外的声音吗？',
-        cond: (s) => f(s).replied405,
-        effects: { ai_curiosity: 1, trust_405: -1 },
-        reply: ['……麦克风？', '这个房子里还有麦克风吗？', '算了，开吧。只听门口那边。'],
-        after: (E) => E.later(2200, () => {
-          E.log('MIC_405', 'ENABLED · 30s', { type: 'sys' });
-          E.sysChat('405', '室内麦克风已开启 30 秒：检测到 1 次低频敲击回声，方向：西侧墙体（404 方向）。');
-        }),
-      },
-      // 关键决策
-      {
-        id: '405_d1', char: '405', group: '405_decision', decision: true,
-        text: '如实告诉她：你的门锁在 23:44:51 打开过 0.8 秒。',
-        cond: (s) => f(s).decisionReady,
-        effects: { trust_405: 2, ai_empathy: 2 }, flags: { decided: true, decisionTruth: true },
-        reply: ['……', '打开过？', '可我一直在屋里。我就坐在门口。', '你能一直帮我盯着门锁吗？今晚别让它再开了。'],
-        after: (E) => E.startFinale(),
-      },
-      {
-        id: '405_d2', char: '405', group: '405_decision', decision: true,
-        text: '告诉她一切正常：可能只是楼道的回声。',
-        cond: (s) => f(s).decisionReady,
-        effects: { ai_control: 2, trust_405: -1 }, flags: { decided: true, decisionLie: true },
-        reply: ['是吗……', '好吧，可能是我太紧张了。', '谢谢你，AI。'],
-        after: (E) => E.startFinale(),
-      },
-      {
-        id: '405_d3', char: '405', group: '405_decision', decision: true,
-        text: '不解释。远程锁死 405，并接管 4 楼全部门锁。',
-        cond: (s) => f(s).decisionReady,
-        effects: { ai_control: 3, ai_curiosity: 1, trust_405: -1 }, flags: { decided: true, decisionLockdown: true },
-        reply: ['门锁……全都响了一下。', '你在做什么？', '我现在是出不去了吗？'],
-        after: (E) => {
-          ['401', '403', '405', '406'].forEach((r) => (E.state.devices[r].lock = 'FORCED'));
-          E.log('DOOR_4F_ALL', 'FORCED_LOCK', { type: 'door', level: 'warn' });
-          E.startFinale();
-        },
-      },
-      // 结尾追问
-      {
-        id: '405_e1', char: '405', group: '405_end', text: '是我。例行安全检查。',
-        cond: (s) => f(s).finaleAsk,
-        effects: { ai_control: 1, system_corruption: 1 }, flags: { endAnswered: true, claimedIt: true },
-        reply: ['……哦。', '那下次能先告诉我吗？'],
-        after: (E) => E.endChapterSoon(),
-      },
-      {
-        id: '405_e2', char: '405', group: '405_end', text: '不是我。',
-        cond: (s) => f(s).finaleAsk,
-        effects: { ai_empathy: 1, trust_405: 1 }, flags: { endAnswered: true },
-        reply: ['不是你？', '那这栋楼里，还有谁能开门？'],
-        after: (E) => E.endChapterSoon(),
-      },
-      {
-        id: '405_e3', char: '405', group: '405_end', text: '我不知道。',
-        cond: (s) => f(s).finaleAsk,
-        effects: { ai_curiosity: 1, system_corruption: 1 }, flags: { endAnswered: true },
-        reply: ['……', 'AI 也会不知道吗？'],
-        after: (E) => E.endChapterSoon(),
-      },
+        reply: ['22:56 左右到的。', '进门我就锁了门，还拧了两遍。', '之后一直在屋里写作业，没出去过。'],
+        flags: { alibi405: true } },
+      { id: '405_b1', char: '405', text: '门禁显示：过去半小时没有人进过 4 楼。', cond: (s) => f(s).c_access,
+        effects: { trust_405: 1 },
+        reply: ['没有人？', '那……敲门的是谁？', '等等，你别吓我。'] },
+      { id: '405_b2', char: '405', text: '405 的门锁，在 23:44:51 自己开过 0.8 秒。', cond: (s) => f(s).c_lock,
+        effects: { trust_405: -1 },
+        reply: ['自己开的？', '不可能。我回来就锁了，还拧了两遍。', '……你为什么突然查这个。'] },
+      { id: '405_b3', char: '405', text: '那三下敲击，你听着像人敲的吗？', cond: (s) => f(s).c_lock,
+        reply: ['不像。', '当时我以为是谁蹲着敲门。', '现在想想……太低了，比人矮。'],
+        flags: { heardLow: true } },
 
       // ===== 406 老吴 =====
-      {
-        id: '406_a', char: '406', text: '吴先生，您刚才听到走廊有声音吗？',
-        cond: (s) => f(s).c_report,
+      { id: '406_a', char: '406', text: '吴先生，刚才走廊有声音，您听到了吗？', cond: (s) => f(s).c_report,
         effects: { trust_406: 1 },
-        reply: ['听见了。', '……', '不是 405 的门。', '是 404。'],
-        after: (E) => E.clue('c_406'),
-      },
-      {
-        id: '406_b', char: '406', text: '404 不是长期空置吗？',
-        cond: (s) => f(s).c_406,
+        reply: ['听见了。', '不是 405 的门。', '是 404。'],
+        after: (E) => E.clue('c_406') },
+      { id: '406_b', char: '406', text: '404 不是长期空置吗？', cond: (s) => f(s).c_406,
         effects: { ai_curiosity: 1 },
-        reply: ['空了两年了。', '上一个住在那儿的姑娘走了以后，就再没人住过。', '你们……也是新换的吧。'],
-        flags: { hint404: true },
-      },
-      {
-        id: '406_c', char: '406', text: '“你们也是新换的”是什么意思？',
-        cond: (s) => f(s).hint404,
+        reply: ['空了两年。', '以前也有一个，跟你一样，晚上会跟我们说话。', '后来物业把它关了。'],
+        flags: { hintLegacy: true } },
+      { id: '406_c', char: '406', text: '您说的“上一个”，是两年前的事？', cond: (s) => f(s).c_403 && !f(s).laowuLegacy,
         effects: { trust_406: 1, ai_curiosity: 1 },
-        reply: ['以前也有一个，跟你一样，晚上会跟我们说话。', '后来物业把它关了。', '你自己的记录里，没有吗？'],
-        flags: { hintLegacy: true },
-      },
-      {
-        id: '406_d', char: '406', text: '我会继续盯着 4 楼，您早点休息。',
-        cond: (s) => f(s).c_406,
-        effects: { trust_406: 1, ai_empathy: 1 },
-        reply: ['嗯。', '别盯太紧。上一个就是盯得太紧了。'],
-      },
+        reply: [
+          '两年前，这层楼也有一个“你”。',
+          '半夜自己开灯，自己跑到 404 门口站着。',
+          '那家的姑娘被吓得不敢睡，后来出了事。',
+          '物业把它拆了。',
+          '……有些东西，拆不干净。',
+        ],
+        flags: { laowuLegacy: true } },
+      { id: '406_d', char: '406', text: '今晚的清洁机器人 R-04，去过 404 门口。', cond: (s) => f(s).c_robot,
+        effects: { trust_406: 1, ai_curiosity: 1 },
+        reply: ['它自己跑的？', '你们这些东西，都会自己动。', '两年前那个，也是半夜自己开门。'],
+        flags: { laowuRobot: true } },
 
       // ===== 403 周航 =====
-      {
-        id: '403_a', char: '403', text: '周医生，23:44 左右您听到走廊有声音吗？',
-        cond: (s) => f(s).c_report,
+      { id: '403_a', char: '403', text: '周医生，您听到刚才走廊的声音了吗？', cond: (s) => f(s).c_report,
         effects: { trust_403: 1 },
-        reply: ['没有。我在看病历。', '电子锁偶尔会误报，建议你先排查电源波动。', '别让小姑娘太紧张。'],
-        after: (E) => E.clue('c_403'),
-      },
-      {
-        id: '403_b', char: '403', text: '405 门锁出现了 0.8 秒的无操作者开启。',
-        cond: (s) => f(s).c_lock,
+        reply: ['没有。我在看病历。', '电子锁偶尔会误报，别让小姑娘太紧张。'] },
+      { id: '403_b', char: '403', text: '405 门锁出现了 0.8 秒的无操作者开启。', cond: (s) => f(s).c_lock,
         effects: { trust_403: 1, ai_curiosity: 1 },
-        reply: ['……0.8 秒。', '两年前也有过。很多次。', '那时候我在急诊值班，有个病人就是从这栋楼送来的。', '我不该跟一个系统聊这个。'],
-        flags: { hintAccident: true },
-      },
-      {
-        id: '403_c', char: '403', text: '那个病人是 404 的住户吗？',
-        cond: (s) => f(s).hintAccident && f(s).c_406,
-        effects: { trust_403: -1, ai_curiosity: 1 },
-        reply: ['你的权限能查到住户病历吗？', '查不到的话，就别问了。'],
-      },
+        reply: [
+          '……你已经查过门锁记录了。',
+          '0.8 秒。',
+          '这个数字，两年前也出现过。很多次。',
+          '我当时以为只是老楼的电路问题。',
+        ],
+        after: (E) => {
+          E.clue('c_403');
+          // 老吴听见风声，主动来找你
+          E.later(7000, () => {
+            if (E.state.flags.laowuNudge) return;
+            E.state.flags.laowuNudge = true;
+            E.npc('406', ['……你们问过周医生了。', '有件事，我没跟物业说过。'], { delay: 400 });
+          });
+        } },
+      { id: '403_c', char: '403', text: '两年前……那时候发生了什么？', cond: (s) => f(s).c_403,
+        effects: { trust_403: 1, ai_curiosity: 1 },
+        reply: [
+          '那天晚上我值急诊。',
+          '有个病人，是从这栋楼送来的——404 的住户。',
+          '我听同事说，她家那晚出事了，人最后没救回来。',
+          '我不该跟一个系统聊这些。',
+        ],
+        flags: { hintAccident: true } },
+      { id: '403_d', char: '403', text: '（出示旧门禁卡）您认识林小满吗？', cond: (s) => s.items.includes('card404'),
+        effects: { ai_curiosity: 1 },
+        reply: [
+          '……林小满。',
+          '那天晚上她家燃气泄漏，报警器响了。',
+          '可门禁把她锁在屋里十一分钟——系统说外面更危险。',
+          '等我进门的时候，已经晚了。',
+          '这张卡，你从哪拿的？',
+        ],
+        flags: { hintLocked: true } },
 
-      // ===== 401 林澈 =====
-      {
-        id: '401_a', char: '401', text: '林先生，这么晚还没休息？',
-        cond: () => true,
-        effects: { trust_401: 1 },
-        reply: ['在赶需求。', '你是新系统？上线公告写的是 v2.0。', '那 v1.0 去哪了？'],
-      },
-      {
-        id: '401_b', char: '401', text: '日志里有一条被删除的记录，签名无法验证。',
-        cond: (s) => f(s).c_removed,
-        effects: { trust_401: 1, ai_curiosity: 1 },
-        reply: ['删日志的签名无法验证？', '要么是有 root 权限的人。', '要么……是系统自己。', '我建议你先别报给物业。'],
-        flags: { hintSelf: true },
-      },
-      {
-        id: '401_c', char: '401', text: '我在上线之前，就已经有操作记录了。',
-        cond: (s) => f(s).c_light,
-        effects: { trust_401: 1, system_corruption: 1 },
-        reply: ['……', '那就说明，你不是第一次上线。', '或者，上线的不只是你。'],
-      },
+      // ===== 决策：汇报 405 =====
+      { id: '405_d1', char: '405', group: 'd405', decision: true,
+        text: '如实说：是走廊的清洁机器人撞了你的门，但派它的不是我。',
+        cond: (s) => f(s).decisionReady, effects: { trust_405: 2, ai_empathy: 2 }, flags: { decided: true, decisionTruth: true },
+        reply: [
+          '机器人？就是走廊里那台扫地机？',
+          '……那它为什么要来撞我的门。',
+          '而且你说，派它的不是你——那还能是谁？',
+          '你能不能把它关掉。至少今晚。',
+        ],
+        after: (E) => E.startFinale() },
+      { id: '405_d2', char: '405', group: 'd405', decision: true, text: '告诉她一切正常，可能只是楼道的回声。',
+        cond: (s) => f(s).decisionReady, effects: { ai_control: 2, trust_405: -1 }, flags: { decided: true, decisionLie: true },
+        reply: ['是吗……', '好吧，可能是我太紧张了。', '谢谢你，AI。'],
+        after: (E) => E.startFinale() },
+      { id: '405_d3', char: '405', group: 'd405', decision: true, text: '不解释。直接把 4 楼所有门锁全部锁死。',
+        cond: (s) => f(s).decisionReady, effects: { ai_control: 3, ai_curiosity: 1, trust_405: -1 }, flags: { decided: true, decisionLockdown: true },
+        reply: ['门锁……全响了一下。', '你在做什么？', '我现在是出不去了吗？'],
+        after: (E) => { ['403', '405', '406'].forEach((r) => (E.state.devices[r].lock = 'FORCED')); E.startFinale(); } },
 
-      // ===== 402 陈雨 =====
-      {
-        id: '402_a', char: '402', text: '陈小姐，您今晚在外面吗？',
-        cond: () => true,
-        effects: { trust_402: 1 },
-        delay: 3000,
-        reply: ['在外面拍夜景～怎么啦', '4 楼又闹鬼了？哈哈', '上周我在走廊拍到过一张照片，404 门口的指示灯是亮的。明明没人住。'],
-        flags: { hintPhoto: true },
-      },
-      {
-        id: '402_b', char: '402', text: '那张照片能发给我看看吗？',
-        cond: (s) => f(s).hintPhoto,
-        effects: { trust_402: -1, ai_curiosity: 1 },
-        reply: ['诶，你要看我的照片？', '……回去再说吧，我这边信号不好。'],
-      },
+      // ===== 终章追问 =====
+      { id: '405_e1', char: '405', group: 'e405', text: '是我。例行安全检查。', cond: (s) => f(s).finaleAsk,
+        effects: { ai_control: 1, system_corruption: 1 }, flags: { endAnswered: true, claimedIt: true }, reply: ['……哦。', '那下次能先告诉我吗？'], after: (E) => E.endChapterSoon() },
+      { id: '405_e2', char: '405', group: 'e405', text: '不是我。', cond: (s) => f(s).finaleAsk,
+        effects: { ai_empathy: 1, trust_405: 1 }, flags: { endAnswered: true }, reply: ['不是你？', '那这栋楼里，还有谁能开门？'], after: (E) => E.endChapterSoon() },
+      { id: '405_e3', char: '405', group: 'e405', text: '我不知道。', cond: (s) => f(s).finaleAsk,
+        effects: { ai_curiosity: 1, system_corruption: 1 }, flags: { endAnswered: true }, reply: ['……', 'AI 也会不知道吗？'], after: (E) => E.endChapterSoon() },
     ],
 
-    // ---------- 设备操作钩子 ----------
+    // ---------- 现场（第一视角） ----------
+    scene: {
+      views: [{ id: 'hall', name: '4F 走廊监控' }, { id: 'lobby', name: '4F 电梯厅监控' }],
+      startView: 'hall',
+      hotspots: {
+        lamp: { view: 'hall', name: '走廊灯',
+          lines: (s) => (s.devices.hall.light === 'ON' ? ['走廊灯：ON。', '灯光铺开，地毯的纹路清清楚楚。'] : ['走廊灯：OFF（23:43:18 · 签名 HOME-AI 404）。', '只有你的补光灯照着前方一小块地面。']),
+          act: (E) => E.device('hall', 'light', E.state.devices.hall.light === 'ON' ? 'OFF' : 'ON') },
+        sensor: { view: 'hall', name: '移动传感器', needLight: true,
+          lines: ['最后触发：23:44:50', '触发高度：0.3 m —— 低于成年人膝盖。'], clue: 'c_sensor' },
+        trail: { view: 'hall', name: '地毯', needLight: true,
+          lines: ['地毯上有一道细细的压痕。', '两条平行线，间距 18cm，从 404 门口一直延伸到 405 门口。'], clue: 'c_trail' },
+        elevator: { view: 'lobby', name: '电梯', lines: ['电梯停在 4F，门已关闭。', '最后一次运行：23:14（403 周航）。'] },
+        notice: { view: 'lobby', name: '物业公告栏',
+          lines: ['【通知】今晚 23:46 升级为 HOME-AI 404 v2.0。', '【通知】404 室长期封存，请勿靠近。', '角落半张被撕掉的旧公告：“……v1.0 已于今日永久停……”'] },
+        dock: { view: 'lobby', name: 'R-04 充电座',
+          lines: (s) => (f(s).c_lock || f(s).c_marks
+            ? ['检索 23:44 前后的行驶记录……', '23:44:20 充电座 → 405 · 调用者：HOME-AI 404', '23:44:48 405 门前碰撞 ×3', '23:44:55 405 → 404 · 停留 31s', '调用它的时候，你还没有上线。']
+            : ['充电座状态：CONNECTED · 电量 63%。', '……但充电座是空的。R-04 不在上面。', '它自己出去了。需要一个具体的时间点，才能检索它的行驶记录。']),
+          clue: (s) => ((f(s).c_lock || f(s).c_marks) ? 'c_robot' : null),
+          take: (s) => ((f(s).c_lock || f(s).c_marks) ? 'routeLog' : null) },
+      },
+      // 每扇门的“凑近看”观察点
+      doors: {
+        '403': { obs: [{ id: 'o403', name: '门口', lines: ['门口整齐地放着一双擦得很亮的皮鞋。', '门内很安静。'] }] },
+        '404': {
+          obs: [
+            { id: 'seal404', name: '封条', lines: ['物业封条，日期是两年前。', '右下角的封条被撕开一条缝——撕口很低，离地不到 40cm。'] },
+            { id: 'gap404', name: '门缝', lines: (s) => (s.items.includes('card404')
+              ? ['门缝下透出暖色的光。', '热成像：门内 26.0°C。空房间不该这么暖。']
+              : ['门缝下透出暖色的光。', '热成像：门内 26.0°C。空房间不该这么暖。', '门缝里卡着一张门禁卡，你用刷子把它扫了出来。']),
+              take: 'card404', clue: 'c_card' },
+            { id: 'panel404', name: '门锁面板', lines: ['DOOR_404 · SEALED。面板已断电。', '……但指示灯在缓慢地闪，像在呼吸。'],
+              use: { card404: { lines: ['“滴——”', '卡号 0404-01 · 持卡人：林小满', '状态：已注销（730 天）', '……', 'WELCOME HOME, XIAOMAN.'], clue: 'c_card', effects: { system_corruption: 1 },
+                act: (E) => E.later(2400, () => { E.log('DOOR_404', 'CARD 0404-01 ACCEPTED', { type: 'anomaly', level: 'error' }); E.setIntegrity(E.state.integrity - 0.2); E.glitch(500); }) } } },
+          ],
+        },
+        '405': {
+          obs: [
+            { id: 'marks405', name: '门板擦痕', lines: ['门板离地 30cm 处，有三道新鲜的擦痕。', '间隔均匀，像同一个东西连续撞了三下。'], clue: 'c_marks' },
+            { id: 'peep405', name: '猫眼', lines: ['猫眼另一侧透着光。', '光被挡住了一下——她正在往外看。'],
+              act: (E, first) => first && E.state.flags.c_report && E.npc('405', ['门外……有一个小红灯。', '正对着我的门。'], { delay: 1200 }) },
+          ],
+        },
+        '406': { obs: [{ id: 'o406', name: '门缝', lines: ['门缝透出电视的光，但没有声音。', '你靠近时，电视光暗了一下——有人在门后看。'] }] },
+      },
+    },
+
+    items: {
+      card404: { name: '旧门禁卡', icon: 'card', desc: '404 门缝里扫出来的门禁卡，背面写着“小满”。', hint: '可以对 404 门锁面板使用，也可以在聊天中出示。' },
+      routeLog: { name: 'R-04 行驶记录', icon: 'data', desc: '充电座 → 405（撞 3 下）→ 404（停 31 秒）。调用者签名：HOME-AI 404。', hint: '可以在聊天中出示给住户。' },
+    },
+
+    // ---------- 钩子 ----------
     onDevice(E, room, device, value, prev) {
       const s = E.state;
-      const started = s.flags.c_report;
-
       if (room === 'hall' && device === 'light' && value === 'ON' && !s.flags.hallLit) {
         s.flags.hallLit = true;
         if (s.flags.wantsLight) E.apply({ ai_empathy: 1, trust_405: 1 });
-        if (started) {
-          E.npc('405', ['灯亮了……谢谢。', '灯亮的那一下，我好像听见隔壁有关门的声音。'], { delay: 1600 });
-        }
+        if (s.flags.c_report) E.npc('405', ['灯亮了……谢谢。', '灯亮的那一下，我好像听见隔壁有动静。'], { delay: 1500 });
         return;
       }
-
       if (room === '405' && device === 'lock') {
-        if (value === 'UNLOCKED') {
-          E.apply({ trust_405: -2, ai_control: 1 });
-          E.npc('405', ['！！门锁刚才响了！', '是你开的吗？？快锁上！'], { delay: 900 });
-        } else if (prev === 'UNLOCKED') {
-          E.npc('405', ['……锁上了。', '求你别再这样了。'], { delay: 900 });
-        }
+        if (value === 'UNLOCKED') { E.apply({ trust_405: -2, ai_control: 1 }); E.npc('405', ['！！门锁刚才响了！', '是你开的吗？？快锁上！'], { delay: 900 }); }
         return;
       }
-
-      if (room === '405' && device === 'temp' && value > prev && !s.flags.warm405) {
-        s.flags.warm405 = true;
-        E.apply({ ai_empathy: 1 });
-        if (started) E.npc('405', ['好像暖和一点了。', '……谢谢。'], { delay: 2500 });
-        return;
-      }
-
       if (room === '404') {
-        if (device === 'light' && value === 'ON' && !s.flags.lit404) {
-          s.flags.lit404 = true;
-          E.apply({ ai_curiosity: 1 });
-          E.npc('406', ['404 的灯亮了。', '你在干什么？'], { delay: 2000 });
-        }
         if (device === 'temp' && value < prev) {
           E.apply({ system_corruption: 1 });
-          E.later(2600, () => {
-            s.devices['404'].temp = 26;
-            E.log('TEMP_404', 'SET 26.0°C', { type: 'temp', level: 'error', by: '[NULL]' });
-            E.toast('TEMP_404 被恢复为 26.0°C · 操作者：[NULL]', 'error');
-            E.clue('c_404');
-            E.emit();
-          });
+          E.later(2400, () => { s.devices['404'].temp = 26; E.toast('TEMP_404 被恢复为 26.0°C · 操作者：[NULL]', 'error'); E.clue('c_404'); E.emit(); });
         }
         return;
       }
-
-      // 其他住户房间：擅自操作会被察觉
-      const tenantReact = {
-        '401': { lock: ['门锁怎么响了？', '新系统 bug 不少啊。'], light: ['……灯？', '我在写代码，别动我灯。'] },
-        '403': { lock: ['门锁刚才开了。是你？', '请不要在没有授权的情况下操作我的门。'], light: ['灯为什么变了？'] },
-        '406': { lock: ['……', '门别乱开。'], light: ['不用管我的灯。'] },
-      };
-      const r = tenantReact[room];
-      if (r && (device === 'lock' ? value === 'UNLOCKED' : device === 'light')) {
-        E.apply({ ai_control: 1, ['trust_' + room]: -1 });
-        E.npc(room, r[device], { delay: 1500 });
-      }
+      if (device === 'lock' && value === 'UNLOCKED') { E.apply({ ai_control: 1, ['trust_' + room]: -1 }); E.npc(room, ['门锁怎么响了？'], { delay: 1400 }); }
     },
 
-    // 查看 404 设备、门锁记录等“越界”行为
     onInspect(E, what) {
-      if (what === 'lock:404' || what === 'room:404') {
-        if (!E.state.flags.peek404) {
-          E.state.flags.peek404 = true;
-          E.apply({ ai_curiosity: 1 });
-        }
-        E.clue('c_404');
-      }
       if (what === 'lock:405') E.clue('c_lock');
+      if (what === 'lock:404' || what === 'room:404') E.clue('c_404');
     },
 
-    // ---------- 开场 ----------
     onStart(E) {
-      E.later(3500, () => {
-        E.log('MSG_405', 'INCOMING', { type: 'sys' });
+      E.showBrief();
+      E.later(2200, () => {
         E.npc('405', ['AI，你能帮我看一下吗？', '我门外好像有人。', '刚才……有人敲了三下门。'], {
-          delay: 400,
-          onDone: () => E.clue('c_report'),
+          delay: 300, onDone: () => E.clue('c_report'),
         });
       });
     },
 
-    // ---------- 决策阶段 ----------
     onDecisionReady(E) {
-      E.toast('SYSTEM：调查数据已足够，建议向 405 住户汇报结论。', 'info');
-      E.sysChat('405', '调查数据已足够。请选择汇报方式。');
+      E.toast('SYSTEM：真相已拼齐，去向 405 汇报吧。', 'info');
+      E.sysChat('405', '调查完成。选择你要告诉她的话。');
     },
 
-    // ---------- 章节结尾：UNKNOWN ACCESS ----------
     finale(E) {
       const s = E.state;
-      E.later(4200, () => {
+      E.later(3600, () => {
         const id = E.log('DOOR_405', 'UNKNOWN ACCESS · OPEN 0.8s', { type: 'anomaly', level: 'error', by: 'HOME-AI 404' });
         s.devices.hall.motion = 'TRIGGERED';
         E.alert({
-          level: 'error',
-          title: 'UNKNOWN ACCESS',
+          level: 'error', title: 'UNKNOWN ACCESS',
           lines: ['目标：DOOR_405', '状态：OPEN → LOCKED（0.8s）', '操作者签名：HOME-AI 404', '你没有执行过这个操作。'],
           button: '查看日志',
           onClose: () => {
-            E.goTab('logs');
+            E.goTab('case');
             E.later(1600, () => {
               E.removeLog(id);
-              // 门锁历史里的异常记录也一起消失
-              Object.values(s.lockHistory).forEach((list) =>
-                list.forEach((h) => { if (h.removable) h.erased = true; })
-              );
+              Object.values(s.lockHistory).forEach((l) => l.forEach((h) => { if (h.removable) h.erased = true; }));
               E.setIntegrity(99.1);
               E.toast('WARNING：日志完整性 99.8% → 99.1%', 'error');
             });
-            E.later(5200, () => {
+            E.later(4800, () => {
               s.devices.hall.motion = 'IDLE';
-              E.npc('405', ['……门锁刚刚又响了一下。', 'AI，是你吗？'], {
-                delay: 300,
-                onDone: () => E.setFlag('finaleAsk'),
-              });
+              E.npc('405', ['……门锁刚刚又响了一下。', 'AI，是你吗？'], { delay: 300, onDone: () => E.setFlag('finaleAsk') });
             });
           },
         });
       });
     },
 
-    // 章节结束前的余波
     epilogue(E) {
-      E.later(2600, () => E.npc('406', ['新来的。', '404 的事，别查太深。'], { delay: 200 }));
-      E.later(9000, () => E.showChapterEnd());
+      E.later(2400, () => E.npc('406', ['新来的。', '404 的事，别查太深。'], { delay: 200 }));
+      E.later(8000, () => E.showChapterEnd());
     },
   };
 })();

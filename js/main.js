@@ -1,4 +1,4 @@
-// 入口：标题 → 开机序列 → 进入游戏
+// 入口：标题 → 开机序列 → 任务简报 → 进入游戏
 (function () {
   const $ = (s) => document.querySelector(s);
 
