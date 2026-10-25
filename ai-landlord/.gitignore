@@ -1,0 +1,9 @@
+.playwright-cli/
+output/playwright/*.png
+output/playwright/*.json
+__pycache__/
+*.zip
+.DS_Store
+Thumbs.db
+.env
+.env.*
